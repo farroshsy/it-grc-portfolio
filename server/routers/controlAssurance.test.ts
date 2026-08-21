@@ -2,7 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const operations = vi.hoisted(() => ({
   getControlAssuranceHubData: vi.fn(),
+  getComplianceDashboardData: vi.fn(),
+  getFlowguardVerificationData: vi.fn(),
   submitEvidence: vi.fn(),
+  attachEvidenceFile: vi.fn(),
+  listEvidenceAttachments: vi.fn(),
+  listWorkspaceEvidenceAttachments: vi.fn(),
   setEvidenceReview: vi.fn(),
   recordTestDecision: vi.fn(),
   setFindingTreatment: vi.fn(),
@@ -14,7 +19,13 @@ const operations = vi.hoisted(() => ({
   importRemediationSnapshot: vi.fn(),
 }));
 
+const access = vi.hoisted(() => ({
+  canPerformWorkspaceAction: vi.fn(),
+  getWorkspaceRoles: vi.fn(),
+}));
+
 vi.mock("../controlAssuranceDb", () => operations);
+vi.mock("../grcAccess", () => access);
 
 import { controlAssuranceRouter } from "./controlAssurance";
 
@@ -23,23 +34,57 @@ const authenticatedContext = {
 } as never;
 
 describe("controlAssuranceRouter", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    access.getWorkspaceRoles.mockImplementation(async (user: { role: string }) => user.role === "admin" ? ["control_owner", "grc_analyst", "risk_approver"] : []);
+    access.canPerformWorkspaceAction.mockImplementation((roles: string[], allowed: string[]) => allowed.some((role) => roles.includes(role)));
+  });
 
   it("returns the complete database-backed operating dataset through the public hub contract", async () => {
-    const expected = { systems: [{ systemId: "SYS-PAY-01" }], controls: [], submissions: [], tests: [], findings: [], acceptances: [], remediationLinks: [], integration: { provider: "GitHub Issues", configured: false, mode: "Offline-first" } };
+    const expected = { systems: [{ systemId: "SYS-PAY-01" }], controls: [], submissions: [], tests: [], findings: [], acceptances: [], remediationLinks: [], attachments: [], integration: { provider: "GitHub Issues", configured: false, mode: "Offline-first" } };
     operations.getControlAssuranceHubData.mockResolvedValue(expected);
-    const caller = controlAssuranceRouter.createCaller({} as never);
-    await expect(caller.hub()).resolves.toEqual(expected);
+    await expect(controlAssuranceRouter.createCaller({} as never).hub()).resolves.toEqual(expected);
   });
 
-  it("uses the authenticated user identity when a control owner submits evidence", async () => {
+  it("returns database-backed operational compliance and FlowGuard verification data only to an authenticated workspace role", async () => {
+    const dashboard = { controls: [{ controlId: "CAA-01" }], tests: [], findings: [], acceptances: [], executions: [], technicalExceptions: [] };
+    const technical = { contracts: [{ contractId: "FGC-001" }], executions: [{ executionId: "FGX-001" }], technicalExceptions: [{ exceptionId: "FG-EXC-001" }] };
+    operations.getComplianceDashboardData.mockResolvedValue(dashboard);
+    operations.getFlowguardVerificationData.mockResolvedValue(technical);
+    const caller = controlAssuranceRouter.createCaller(authenticatedContext);
+    await expect(caller.complianceDashboard()).resolves.toEqual({ ...dashboard, roles: ["control_owner", "grc_analyst", "risk_approver"] });
+    await expect(caller.technicalVerification()).resolves.toEqual({ ...technical, roles: ["control_owner", "grc_analyst", "risk_approver"] });
+    await expect(controlAssuranceRouter.createCaller({} as never).complianceDashboard()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+  });
+
+  it("uses the authenticated identity when a control owner submits evidence and records a managed attachment", async () => {
     operations.submitEvidence.mockResolvedValue({ submissionId: "EVD-900001" });
+    operations.attachEvidenceFile.mockResolvedValue({ attachmentId: "ATT-900001", storageUrl: "/manus-storage/evidence.pdf" });
+    operations.listEvidenceAttachments.mockResolvedValue([{ attachmentId: "ATT-900001" }]);
+    operations.listWorkspaceEvidenceAttachments.mockResolvedValue([{ attachmentId: "ATT-900001", storageUrl: "/manus-storage/evidence.pdf" }]);
     const caller = controlAssuranceRouter.createCaller(authenticatedContext);
     await expect(caller.submitEvidence({ controlId: "CAA-AC-01", evidenceSummary: "Illustrative evidence package for control operation." })).resolves.toEqual({ submissionId: "EVD-900001" });
+    await expect(caller.attachEvidence({ submissionId: "EVD-900001", fileName: "access-review.pdf", contentType: "application/pdf", base64Data: "c2ltdWxhdGVk" })).resolves.toMatchObject({ attachmentId: "ATT-900001" });
+    await expect(caller.evidenceAttachments({ submissionId: "EVD-900001" })).resolves.toEqual([{ attachmentId: "ATT-900001" }]);
+    await expect(caller.evidenceAttachmentIndex()).resolves.toEqual([{ attachmentId: "ATT-900001", storageUrl: "/manus-storage/evidence.pdf" }]);
     expect(operations.submitEvidence).toHaveBeenCalledWith({ controlId: "CAA-AC-01", evidenceSummary: "Illustrative evidence package for control operation.", submittedBy: "Portfolio Owner" });
+    expect(operations.attachEvidenceFile).toHaveBeenCalledWith(expect.objectContaining({ submissionId: "EVD-900001", fileName: "access-review.pdf", uploadedBy: "Portfolio Owner" }));
   });
 
-  it("routes a treatment decision and offline issue preparation through validated procedures", async () => {
+  it("reports resolved workspace permissions and rejects users without the required role", async () => {
+    const caller = controlAssuranceRouter.createCaller(authenticatedContext);
+    await expect(caller.myAccess()).resolves.toEqual({ roles: ["control_owner", "grc_analyst", "risk_approver"], isAdministrator: true });
+    access.getWorkspaceRoles.mockResolvedValue([]);
+    const userContext = { user: { ...((authenticatedContext as { user: object }).user), role: "user" } } as never;
+    const restrictedCaller = controlAssuranceRouter.createCaller(userContext);
+    await expect(restrictedCaller.submitEvidence({ controlId: "CAA-AC-01", evidenceSummary: "Illustrative evidence package for role enforcement." })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(restrictedCaller.attachEvidence({ submissionId: "EVD-001", fileName: "evidence.pdf", contentType: "application/pdf", base64Data: "c2ltdWxhdGVk" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(restrictedCaller.evidenceAttachmentIndex()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(restrictedCaller.recordTestDecision({ submissionId: "EVD-001", result: "Effective", conclusion: "Illustrative role-enforcement test conclusion." })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(restrictedCaller.proposeRiskAcceptance({ findingId: "FND-001", rationale: "Illustrative role-enforcement residual-risk rationale.", expiresAt: new Date("2026-10-01") })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("routes analyst treatment decisions and offline issue preparation through validated procedures", async () => {
     operations.setFindingTreatment.mockResolvedValue({ success: true, status: "Remediation planned" });
     operations.markReadyForGithubIssue.mockResolvedValue({ success: true, integrationConfigured: false });
     const caller = controlAssuranceRouter.createCaller(authenticatedContext);
@@ -56,14 +101,14 @@ describe("controlAssuranceRouter", () => {
     expect(operations.recordTestDecision).toHaveBeenCalledWith({ submissionId: "EVD-002", result: "Exception", conclusion: "Illustrative testing identified missing retrospective approval evidence.", testedBy: "Portfolio Owner" });
   });
 
-  it("moves a finding through proposed and approved residual-risk decisions with an accountable approver", async () => {
+  it("moves a finding through proposed and approved residual-risk decisions with the named risk approver", async () => {
     operations.proposeRiskAcceptance.mockResolvedValue({ acceptanceId: "RA-900001", status: "Proposed" });
     operations.decideRiskAcceptance.mockResolvedValue({ success: true, findingId: "FND-001", status: "Approved" });
     const caller = controlAssuranceRouter.createCaller(authenticatedContext);
     const expiry = new Date("2026-10-01");
     await expect(caller.proposeRiskAcceptance({ findingId: "FND-001", rationale: "Illustrative time-bound residual-risk rationale for a controlled remediation period.", expiresAt: expiry })).resolves.toEqual({ acceptanceId: "RA-900001", status: "Proposed" });
     await expect(caller.decideRiskAcceptance({ acceptanceId: "RA-900001", decision: "Approved" })).resolves.toMatchObject({ findingId: "FND-001", status: "Approved" });
-    expect(operations.proposeRiskAcceptance).toHaveBeenCalledWith(expect.objectContaining({ findingId: "FND-001", riskOwner: "Portfolio Owner", approver: "Technology Risk Approver" }));
+    expect(operations.proposeRiskAcceptance).toHaveBeenCalledWith(expect.objectContaining({ findingId: "FND-001", riskOwner: "Portfolio Owner", approver: "Portfolio Owner" }));
     expect(operations.decideRiskAcceptance).toHaveBeenCalledWith({ acceptanceId: "RA-900001", decision: "Approved", approver: "Portfolio Owner" });
   });
 
@@ -79,7 +124,7 @@ describe("controlAssuranceRouter", () => {
     expect(operations.syncRemediationStatus).toHaveBeenCalledWith("FND-001");
   });
 
-  it("accepts a provenance-safe external remediation snapshot without accepting credentials from the client", async () => {
+  it("accepts a provenance-safe external remediation snapshot without accepting client credentials", async () => {
     operations.importRemediationSnapshot.mockResolvedValue({ success: true, status: "Pending retest" });
     const caller = controlAssuranceRouter.createCaller(authenticatedContext);
     await expect(caller.importRemediationSnapshot({ findingId: "FND-001", provider: "GitHub Issues", externalIssueNumber: 42, externalIssueUrl: "https://github.com/acme/remediations/issues/42", externalState: "closed", observedAt: new Date("2026-08-21"), provenance: "Simulated Case Study" })).resolves.toEqual({ success: true, status: "Pending retest" });

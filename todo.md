@@ -80,4 +80,14 @@
 - [x] Add a data-layer integration test that exercises the implemented Control Assurance Hub transition functions with controlled persistence dependencies.
 - [x] Add explicit empty states for findings, PBC/workpapers, policy references, and connection/remediation queues in the Control Assurance Hub.
 - [x] Add component coverage verifying the Control Assurance Hub empty states render for empty operational datasets.
+- [x] Define control-owner, GRC-analyst, and risk-approver access boundaries and document how each role uses the operating workflow.
+- [x] Add database and server contracts for per-user GRC role assignments, evidence-file metadata, and role-scoped actions.
+- [x] Implement secure real evidence attachment upload and retrieval using managed file storage, linked to the evidence intake lifecycle.
+- [x] Build a role-aware compliance dashboard with open findings, pending risk acceptances, control effectiveness, and remediation-aging Recharts views.
+- [x] Import the reusable FlowGuard verification boundary, starting with the simulated payment control, without duplicating the existing GRC control taxonomy.
+- [x] Test role access, file attachment safety, dashboard data, and FlowGuard import behavior; verify responsive UX and save the expanded product checkpoint.
 - [x] Save the final offline Control Assurance Hub checkpoint after all workflow, empty-state, responsive, and test validation work.
+- [x] Restrict managed evidence attachment metadata and signed storage URLs to authenticated users with an assigned workspace role; remove attachment URLs from the public Hub response.
+- [x] Make the operational compliance dashboard and FlowGuard trace-verification data contracts protected and surface resolved workspace roles with role-specific next actions.
+- [x] Integrate a named FlowGuard payment-completion verifier adapter derived from the supplied handoff model, preserving trace ID, evidence hash, verdict, finding, and provenance export semantics.
+- [x] Add RBAC, protected attachment-index, FlowGuard verifier, dashboard contract, evidence-file UI, desktop, and mobile validation coverage for the expanded GRC product.

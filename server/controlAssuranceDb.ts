@@ -2,7 +2,11 @@ import { asc, desc, eq } from "drizzle-orm";
 import {
   assuranceControls,
   assuranceTests,
+  evidenceAttachments,
   evidenceSubmissions,
+  flowguardControlContracts,
+  flowguardControlExecutions,
+  flowguardExceptions,
   githubRemediationLinks,
   grcFindings,
   grcSystems,
@@ -12,6 +16,7 @@ import { getDb } from "./db";
 import { ensureControlAssuranceSeeded } from "./controlAssuranceSeed";
 import { controlStatusForTestDecision, effectiveRiskAcceptanceStatus, evidenceStatusForTestDecision, findingStatusForExternalState, findingStatusForRiskDecision, findingStatusForTreatment } from "../shared/controlAssuranceLifecycle";
 import { createExternalRemediation, refreshExternalRemediation, type RemediationProvider } from "./remediationProvider";
+import { storagePut } from "./storage";
 
 async function readyDb() {
   const db = await getDb();
@@ -43,6 +48,31 @@ export async function getControlAssuranceHubData() {
   return { systems, controls, submissions, tests, findings, acceptances: resolvedAcceptances, remediationLinks, integration: { provider: "GitHub Issues", configured: false, mode: "Offline-first" as const } };
 }
 
+export async function getComplianceDashboardData() {
+  const db = await readyDb();
+  if (!db) return null;
+  const [controls, tests, findings, acceptances, executions, technicalExceptions] = await Promise.all([
+    db.select().from(assuranceControls).orderBy(asc(assuranceControls.controlId)),
+    db.select().from(assuranceTests).orderBy(desc(assuranceTests.testedAt)),
+    db.select().from(grcFindings).orderBy(asc(grcFindings.dueDate)),
+    db.select().from(riskAcceptances).orderBy(asc(riskAcceptances.expiresAt)),
+    db.select().from(flowguardControlExecutions).orderBy(asc(flowguardControlExecutions.occurredAt)),
+    db.select().from(flowguardExceptions).orderBy(asc(flowguardExceptions.dueDate)),
+  ]);
+  return { controls, tests, findings, acceptances, executions, technicalExceptions };
+}
+
+export async function getFlowguardVerificationData() {
+  const db = await readyDb();
+  if (!db) return null;
+  const [contracts, executions, technicalExceptions] = await Promise.all([
+    db.select().from(flowguardControlContracts).orderBy(asc(flowguardControlContracts.controlKey)),
+    db.select().from(flowguardControlExecutions).orderBy(desc(flowguardControlExecutions.occurredAt)),
+    db.select().from(flowguardExceptions).orderBy(asc(flowguardExceptions.dueDate)),
+  ]);
+  return { contracts, executions, technicalExceptions };
+}
+
 export async function submitEvidence(input: { controlId: string; evidenceSummary: string; submittedBy: string }) {
   const db = await readyDb();
   if (!db) throw new Error("The control-assurance datastore is unavailable.");
@@ -58,6 +88,35 @@ export async function submitEvidence(input: { controlId: string; evidenceSummary
   });
   await db.update(assuranceControls).set({ status: "In testing" }).where(eq(assuranceControls.controlId, input.controlId));
   return { submissionId };
+}
+
+const allowedEvidenceContentTypes = new Set(["application/pdf", "image/png", "image/jpeg", "image/webp", "text/plain"]);
+
+export async function attachEvidenceFile(input: { submissionId: string; fileName: string; contentType: string; base64Data: string; uploadedBy: string }) {
+  const db = await readyDb();
+  if (!db) throw new Error("The control-assurance datastore is unavailable.");
+  if (!allowedEvidenceContentTypes.has(input.contentType)) throw new Error("Evidence files must be PDF, PNG, JPEG, WEBP, or plain text.");
+  const fileData = Buffer.from(input.base64Data, "base64");
+  if (!fileData.byteLength || fileData.byteLength > 5 * 1024 * 1024) throw new Error("Evidence files must be between 1 byte and 5 MB.");
+  const [submission] = await db.select().from(evidenceSubmissions).where(eq(evidenceSubmissions.submissionId, input.submissionId)).limit(1);
+  if (!submission) throw new Error("The evidence submission does not exist.");
+  const safeFileName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120) || "evidence.bin";
+  const attachmentId = `ATT-${Date.now().toString().slice(-6)}`;
+  const uploaded = await storagePut(`grc-evidence/${submission.controlId}/${input.submissionId}/${safeFileName}`, fileData, input.contentType);
+  await db.insert(evidenceAttachments).values({ attachmentId, submissionId: input.submissionId, fileName: safeFileName, contentType: input.contentType, byteSize: fileData.byteLength, storageKey: uploaded.key, storageUrl: uploaded.url, uploadedBy: input.uploadedBy, uploadedAt: new Date(), provenance: "Simulated Case Study" });
+  return { attachmentId, fileName: safeFileName, contentType: input.contentType, byteSize: fileData.byteLength, url: uploaded.url };
+}
+
+export async function listEvidenceAttachments(submissionId: string) {
+  const db = await readyDb();
+  if (!db) throw new Error("The control-assurance datastore is unavailable.");
+  return db.select().from(evidenceAttachments).where(eq(evidenceAttachments.submissionId, submissionId)).orderBy(desc(evidenceAttachments.uploadedAt));
+}
+
+export async function listWorkspaceEvidenceAttachments() {
+  const db = await readyDb();
+  if (!db) throw new Error("The control-assurance datastore is unavailable.");
+  return db.select().from(evidenceAttachments).orderBy(desc(evidenceAttachments.uploadedAt));
 }
 
 export async function setEvidenceReview(input: { submissionId: string; status: "Accepted" | "Rejected"; reviewNote: string; reviewedBy: string }) {

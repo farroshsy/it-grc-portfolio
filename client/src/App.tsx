@@ -9,10 +9,12 @@ import Dashboard from "./pages/Dashboard";
 import AuditRoom from "./pages/AuditRoom";
 import AuditWorkpaperPage from "./pages/AuditWorkpaperPage";
 import ControlAssuranceHub from "./pages/ControlAssuranceHub";
+import ComplianceDashboard from "./pages/ComplianceDashboard";
 import ExecutiveBriefing from "./pages/ExecutiveBriefing";
 import Home from "./pages/Home";
 import PolicyPack from "./pages/PolicyPack";
 import SkillsCertifications from "./pages/SkillsCertifications";
+import TechnicalVerification from "./pages/TechnicalVerification";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -24,6 +26,8 @@ function Router() {
       <Route path={"/audit-room"} component={AuditRoom} />
       <Route path={"/audit-workpaper"} component={AuditWorkpaperPage} />
       <Route path={"/workspace"} component={ControlAssuranceHub} />
+      <Route path={"/compliance-dashboard"} component={ComplianceDashboard} />
+      <Route path={"/technical-verification"} component={TechnicalVerification} />
       <Route path={"/policy-pack"} component={PolicyPack} />
       <Route path={"/executive-briefing"} component={ExecutiveBriefing} />
       <Route path={"/skills-certifications"} component={SkillsCertifications} />

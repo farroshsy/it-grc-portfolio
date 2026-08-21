@@ -12,6 +12,8 @@ export const findingStatusValues = ["Open", "Remediation planned", "In remediati
 export const treatmentChoiceValues = ["Remediation", "Risk acceptance"] as const;
 export const riskAcceptanceStatusValues = ["Proposed", "Approved", "Rejected", "Expired"] as const;
 export const remediationSyncStatusValues = ["Not connected", "Ready to create", "Synced open", "Synced closed", "Retest required"] as const;
+export const grcWorkspaceRoleValues = ["control_owner", "grc_analyst", "risk_approver"] as const;
+export const technicalVerdictValues = ["PASS", "FAIL", "INCONCLUSIVE"] as const;
 
 /** Core user table backing the preconfigured authentication flow. */
 export const users = mysqlTable("users", {
@@ -25,6 +27,19 @@ export const users = mysqlTable("users", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
+
+/** Additional operational GRC roles. The template admin role retains every workspace permission. */
+export const grcUserRoles = mysqlTable("grc_user_roles", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  workspaceRole: mysqlEnum("workspaceRole", grcWorkspaceRoleValues).notNull(),
+  assignedBy: varchar("assignedBy", { length: 80 }).notNull(),
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  index("grc_user_roles_user_idx").on(table.userId),
+  uniqueIndex("grc_user_role_unique").on(table.userId, table.workspaceRole),
+]);
 
 export const caseStudies = mysqlTable("case_studies", {
   id: int("id").autoincrement().primaryKey(),
@@ -217,6 +232,24 @@ export const evidenceSubmissions = mysqlTable("evidence_submissions", {
   provenance: mysqlEnum("provenance", provenanceValues).notNull(),
 }, (table) => [index("evidence_submissions_control_idx").on(table.controlId), index("evidence_submissions_status_idx").on(table.status), uniqueIndex("evidence_submission_identifier_unique").on(table.submissionId)]);
 
+/** File metadata is stored in MySQL; binary evidence is stored through the managed object-storage helper. */
+export const evidenceAttachments = mysqlTable("evidence_attachments", {
+  id: int("id").autoincrement().primaryKey(),
+  attachmentId: varchar("attachmentId", { length: 40 }).notNull(),
+  submissionId: varchar("submissionId", { length: 40 }).notNull(),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  contentType: varchar("contentType", { length: 120 }).notNull(),
+  byteSize: int("byteSize").notNull(),
+  storageKey: text("storageKey").notNull(),
+  storageUrl: text("storageUrl").notNull(),
+  uploadedBy: varchar("uploadedBy", { length: 80 }).notNull(),
+  uploadedAt: timestamp("uploadedAt").notNull(),
+  provenance: mysqlEnum("provenance", provenanceValues).notNull(),
+}, (table) => [
+  index("evidence_attachments_submission_idx").on(table.submissionId),
+  uniqueIndex("evidence_attachment_identifier_unique").on(table.attachmentId),
+]);
+
 export const assuranceTests = mysqlTable("assurance_tests", {
   id: int("id").autoincrement().primaryKey(),
   assuranceTestId: varchar("assuranceTestId", { length: 40 }).notNull(),
@@ -271,6 +304,64 @@ export const githubRemediationLinks = mysqlTable("github_remediation_links", {
   lastError: text("lastError"),
   provenance: mysqlEnum("provenance", provenanceValues).notNull(),
 }, (table) => [index("github_remediation_finding_idx").on(table.findingId), uniqueIndex("github_remediation_link_identifier_unique").on(table.linkId)]);
+
+/** Executable technical-control contracts map to the existing assurance control catalogue, not a parallel taxonomy. */
+export const flowguardControlContracts = mysqlTable("flowguard_control_contracts", {
+  id: int("id").autoincrement().primaryKey(),
+  contractId: varchar("contractId", { length: 40 }).notNull(),
+  controlKey: varchar("controlKey", { length: 40 }).notNull(),
+  mappedControlId: varchar("mappedControlId", { length: 40 }).notNull(),
+  process: varchar("process", { length: 120 }).notNull(),
+  contractYaml: text("contractYaml").notNull(),
+  provenanceSource: varchar("provenanceSource", { length: 160 }).notNull(),
+  provenance: mysqlEnum("provenance", provenanceValues).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("flowguard_contract_identifier_unique").on(table.contractId),
+  uniqueIndex("flowguard_control_key_unique").on(table.controlKey),
+  index("flowguard_contract_mapped_control_idx").on(table.mappedControlId),
+]);
+
+/** Immutable trace/fixture execution evidence. A retest creates a new row instead of changing a historical verdict. */
+export const flowguardControlExecutions = mysqlTable("flowguard_control_executions", {
+  id: int("id").autoincrement().primaryKey(),
+  executionId: varchar("executionId", { length: 40 }).notNull(),
+  contractId: varchar("contractId", { length: 40 }).notNull(),
+  controlKey: varchar("controlKey", { length: 40 }).notNull(),
+  mappedControlId: varchar("mappedControlId", { length: 40 }).notNull(),
+  verdict: mysqlEnum("verdict", technicalVerdictValues).notNull(),
+  traceId: varchar("traceId", { length: 160 }).notNull(),
+  evidenceHash: varchar("evidenceHash", { length: 160 }).notNull(),
+  firstFinding: text("firstFinding"),
+  occurredAt: timestamp("occurredAt").notNull(),
+  provenanceSource: varchar("provenanceSource", { length: 160 }).notNull(),
+  biOjkEvidenceReference: varchar("biOjkEvidenceReference", { length: 160 }),
+  iso27001EvidenceReference: varchar("iso27001EvidenceReference", { length: 160 }),
+  mappingInterpretationNote: text("mappingInterpretationNote"),
+  provenance: mysqlEnum("provenance", provenanceValues).notNull(),
+}, (table) => [
+  uniqueIndex("flowguard_execution_identifier_unique").on(table.executionId),
+  uniqueIndex("flowguard_evidence_hash_unique").on(table.evidenceHash),
+  index("flowguard_execution_control_idx").on(table.mappedControlId),
+  index("flowguard_execution_occurred_idx").on(table.occurredAt),
+]);
+
+export const flowguardExceptions = mysqlTable("flowguard_exceptions", {
+  id: int("id").autoincrement().primaryKey(),
+  exceptionId: varchar("exceptionId", { length: 40 }).notNull(),
+  executionId: varchar("executionId", { length: 40 }).notNull(),
+  linkedFindingId: varchar("linkedFindingId", { length: 40 }),
+  title: varchar("title", { length: 250 }).notNull(),
+  owner: varchar("owner", { length: 80 }).notNull(),
+  dueDate: timestamp("dueDate"),
+  remediation: text("remediation").notNull(),
+  retestStatus: varchar("retestStatus", { length: 60 }).notNull(),
+  status: varchar("status", { length: 60 }).notNull(),
+  provenance: mysqlEnum("provenance", provenanceValues).notNull(),
+}, (table) => [
+  uniqueIndex("flowguard_exception_identifier_unique").on(table.exceptionId),
+  index("flowguard_exception_execution_idx").on(table.executionId),
+]);
 
 export const sources = mysqlTable("sources", {
   id: int("id").autoincrement().primaryKey(),
