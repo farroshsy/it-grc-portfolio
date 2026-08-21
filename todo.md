@@ -43,3 +43,8 @@
 - [x] Add explicit loading, error, and empty states to the simulated policy-pack page.
 - [x] Add explicit loading, error, and empty states to the executive risk briefing.
 - [x] Add automated tests proving audit-request and policy-pack records retain only approved provenance labels.
+- [x] Define provenance-safe simulated audit-workpaper content, application-specific qualifications framing, and PDF export acceptance criteria.
+- [x] Build a simulated audit workpaper section with test steps, sample selection, test execution, and conclusion fields.
+- [x] Build a dedicated skills and certifications page with application-focused qualification highlights and clear claim boundaries.
+- [x] Add a one-page downloadable PDF export for the executive risk briefing using the existing database-backed briefing dataset.
+- [x] Test workpaper interactions, qualifications-page states, and PDF output; verify desktop/mobile presentation; save the updated project checkpoint.

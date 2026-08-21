@@ -1,6 +1,6 @@
 import React, { type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
-import { ArrowUpRight, BookOpen, ClipboardCheck, FileText, LayoutDashboard, Presentation, ShieldCheck } from "lucide-react";
+import { ArrowUpRight, Award, BookOpen, ClipboardCheck, FileText, LayoutDashboard, Presentation, ShieldCheck } from "lucide-react";
 
 export function ProvenanceBadge({ label }: { label: "Academic" | "Independent Research" | "Simulated Case Study" }) {
   return <span className="provenance-badge">{label}</span>;
@@ -22,6 +22,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
     { href: "/audit-room", label: "Audit room", icon: ClipboardCheck },
     { href: "/policy-pack", label: "Policy pack", icon: FileText },
     { href: "/executive-briefing", label: "Executive brief", icon: Presentation },
+    { href: "/skills-certifications", label: "Skills", icon: Award },
   ];
 
   return (

@@ -15,6 +15,7 @@ This register supports **independent research** and simulated case-study content
 | National Institute of Standards and Technology | NIST SP 800-53 Rev. 5, Security and Privacy Controls for Information Systems and Organizations | September 2020; updates as of 10 December 2020 | Control-family reference for simulated access, configuration/change, incident-response, and system-integrity policy summaries | https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final |
 | National Institute of Standards and Technology | NIST SP 800-61 Rev. 3, Incident Response Recommendations and Considerations for Cybersecurity Risk Management | April 2025 | Simulated incident-management policy and continuous-improvement reference | https://csrc.nist.gov/projects/incident-response |
 | National Institute of Standards and Technology | Cybersecurity Framework 2.0 | Published February 2024 | Simulated executive briefing and governance/risk communication reference | https://www.nist.gov/cyberframework |
+| National Institute of Standards and Technology | NIST SP 800-53A Rev. 5, Assessing Security and Privacy Controls in Information Systems and Organizations | January 2022; minor release 5.2.0 noted August 2025 | Simulated audit workpaper structure for adaptable control assessment procedures, evidence, testing, and conclusions | https://csrc.nist.gov/pubs/sp/800/53/a/r5/final |
 
 ## Use Boundary
 

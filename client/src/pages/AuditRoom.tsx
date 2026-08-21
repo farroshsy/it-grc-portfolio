@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { ClipboardCheck, FileCheck2, Filter, Search, ShieldCheck } from "lucide-react";
 import { SiteShell, ProvenanceBadge } from "@/components/PortfolioChrome";
 import { trpc } from "@/lib/trpc";
+import AuditWorkpaper from "@/components/AuditWorkpaper";
 
 type AuditRequest = {
   id: number; requestId: string; title: string; domain: string; owner: string; status: string;
@@ -30,6 +31,7 @@ export default function AuditRoom() {
         {filtered.length === 0 ? <AuditMessage title="No requests match this view" detail="Clear the search or choose another request status to inspect the simulated ledger." /> : <div className="audit-table-wrap"><table className="audit-table"><thead><tr><th>Request</th><th>Owner</th><th>State</th><th>Target</th><th>Closure evidence</th></tr></thead><tbody>{filtered.map((request) => <tr key={request.id}><td><span className="table-id">{request.requestId}</span><strong>{request.title}</strong><small>{request.domain} · {request.provenance}</small></td><td>{request.owner}</td><td><span className={`audit-status ${request.status.toLowerCase().replace(" ", "-")}`}>{request.status}</span></td><td>{new Date(request.dueDate).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}</td><td>{request.closureEvidence}</td></tr>)}</tbody></table></div>}
       </section>
       <section className="audit-operating-note"><span>How to explain this in interview</span><p>“I begin with the control objective, request evidence from a named owner, validate completeness and period, document the test result, and link any gap to a treatment decision. The status is not the outcome; the closure evidence is.”</p></section>
+      <AuditWorkpaper />
     </>}
   </main></SiteShell>;
 }

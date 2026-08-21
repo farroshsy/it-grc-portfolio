@@ -26,3 +26,5 @@ export function createExecutiveBriefing(input: { risks: BriefingRisk[]; controls
     assuranceNote: "Illustrative management view derived from simulated portfolio records. It is not an audit opinion, certification statement, or regulatory conclusion.",
   };
 }
+
+export type ExecutiveBriefingSummary = ReturnType<typeof createExecutiveBriefing>;
