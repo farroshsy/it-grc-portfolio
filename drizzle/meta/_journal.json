@@ -22,6 +22,13 @@
       "when": 1787277891345,
       "tag": "0002_amazing_shocker",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1787279758182,
+      "tag": "0003_elite_daimon_hellstrom",
+      "breakpoints": true
     }
   ]
 }

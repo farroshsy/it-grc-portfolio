@@ -48,3 +48,36 @@
 - [x] Build a dedicated skills and certifications page with application-focused qualification highlights and clear claim boundaries.
 - [x] Add a one-page downloadable PDF export for the executive risk briefing using the existing database-backed briefing dataset.
 - [x] Test workpaper interactions, qualifications-page states, and PDF output; verify desktop/mobile presentation; save the updated project checkpoint.
+- [x] Define the business problem, end-to-end GRC workflow, roles, decisions, and integration boundary for a functional product use case.
+- [x] Design and migrate the operational data model for systems, control requirements, evidence submissions, tests, findings, risk treatment, approvals, and external references.
+- [x] Implement a working control-attestation workflow with owner action, evidence status, test decision, finding creation, remediation ownership, and risk acceptance approval.
+- [x] Implement integration-ready API contracts and an import/export boundary that another system can use without embedding credentials in the client.
+- [x] Build a product workspace and management view demonstrating the business problem, operational flow, and live decision outcomes.
+- [x] Add automated end-to-end workflow coverage, API-contract tests, responsive verification, and a final product checkpoint.
+- [x] Define GitHub Issues as the free engineering-remediation integration, including least-privilege credential handling, repository scope, and fallback behavior when disconnected.
+- [x] Add GRC workflow records for evidence submissions, control tests, findings, remediation decisions, risk acceptance, and GitHub issue synchronization.
+- [x] Implement the owner-facing control-assurance workspace and the finding-to-GitHub-issue creation and status-sync business process.
+- [x] Build a GitHub connection setup view and integration-ready server endpoints that remain usable without a connected repository.
+- [x] Test the complete control-to-remediation workflow and GitHub synchronization contracts with controlled provider responses.
+- [x] Define the offline-first workspace information architecture, roles, navigation, and end-to-end user workflow.
+- [x] Seed a complete simulated operating scenario covering systems, controls, evidence, tests, findings, remediation, and risk acceptance.
+- [x] Build an intuitive operational workspace for evidence intake, control testing, findings, remediation, PBC tracking, and risk decision actions.
+- [x] Integrate the simulated audit workpaper and policy-and-procedure pack as functional workflow references within the workspace.
+- [x] Add offline workflow tests, empty/error states, responsive verification, and final product release validation.
+- [x] Add a signed-in GRC analyst action to record an effective or exception control-test conclusion from submitted evidence and automatically create a remediation-ready finding for exceptions.
+- [x] Add a persisted risk-acceptance workflow with propose, approve, reject, and expiry states, including accountable owner and approver actions.
+- [x] Implement provider-agnostic remediation status synchronization and a protected server-side refresh action that reconciles a linked GitHub issue into the GRC finding state.
+- [x] Publish and test an explicit external import/export payload boundary for remediation and control-assurance records without exposing credentials to the client.
+- [x] Add an end-to-end workflow test covering evidence submission, analyst test decision, automatic finding creation, treatment selection, risk decision, and remediation synchronization transitions.
+- [x] Add deterministic risk-acceptance expiry evaluation and expose expired decisions in the hub data and risk-decision safeguards.
+- [x] Refactor remediation sync behind a real provider-dispatch layer keyed by the stored provider and validate the GitHub implementation through that generic contract.
+- [x] Add a provenance-safe remediation and control-assurance import contract that complements the export payload without accepting credentials from the client.
+- [x] Add an integration-style lifecycle test with real controlled persistence transitions from evidence submission through treatment, risk decision, and offline remediation synchronization.
+- [x] Add a controlled persistence-style Control Assurance Hub workflow test covering evidence submission, test decision, finding creation, treatment, risk decision, and offline remediation sync.
+- [x] Add and test explicit empty-state handling for the Control Assurance Hub operational datasets and queues.
+- [x] Test the remediation provider-dispatch layer by exercising the GitHub implementation through the generic contract.
+- [x] Save the final validated offline GRC product checkpoint after the remaining workflow verification is complete.
+- [x] Add a data-layer integration test that exercises the implemented Control Assurance Hub transition functions with controlled persistence dependencies.
+- [x] Add explicit empty states for findings, PBC/workpapers, policy references, and connection/remediation queues in the Control Assurance Hub.
+- [x] Add component coverage verifying the Control Assurance Hub empty states render for empty operational datasets.
+- [x] Save the final offline Control Assurance Hub checkpoint after all workflow, empty-state, responsive, and test validation work.

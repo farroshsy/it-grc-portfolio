@@ -8,6 +8,7 @@ import CaseStudy from "./pages/CaseStudy";
 import Dashboard from "./pages/Dashboard";
 import AuditRoom from "./pages/AuditRoom";
 import AuditWorkpaperPage from "./pages/AuditWorkpaperPage";
+import ControlAssuranceHub from "./pages/ControlAssuranceHub";
 import ExecutiveBriefing from "./pages/ExecutiveBriefing";
 import Home from "./pages/Home";
 import PolicyPack from "./pages/PolicyPack";
@@ -22,6 +23,7 @@ function Router() {
       <Route path={"/dashboard"} component={Dashboard} />
       <Route path={"/audit-room"} component={AuditRoom} />
       <Route path={"/audit-workpaper"} component={AuditWorkpaperPage} />
+      <Route path={"/workspace"} component={ControlAssuranceHub} />
       <Route path={"/policy-pack"} component={PolicyPack} />
       <Route path={"/executive-briefing"} component={ExecutiveBriefing} />
       <Route path={"/skills-certifications"} component={SkillsCertifications} />

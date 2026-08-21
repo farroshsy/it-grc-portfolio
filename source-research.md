@@ -16,6 +16,8 @@ This register supports **independent research** and simulated case-study content
 | National Institute of Standards and Technology | NIST SP 800-61 Rev. 3, Incident Response Recommendations and Considerations for Cybersecurity Risk Management | April 2025 | Simulated incident-management policy and continuous-improvement reference | https://csrc.nist.gov/projects/incident-response |
 | National Institute of Standards and Technology | Cybersecurity Framework 2.0 | Published February 2024 | Simulated executive briefing and governance/risk communication reference | https://www.nist.gov/cyberframework |
 | National Institute of Standards and Technology | NIST SP 800-53A Rev. 5, Assessing Security and Privacy Controls in Information Systems and Organizations | January 2022; minor release 5.2.0 noted August 2025 | Simulated audit workpaper structure for adaptable control assessment procedures, evidence, testing, and conclusions | https://csrc.nist.gov/pubs/sp/800/53/a/r5/final |
+| GitHub | REST API endpoints for issues | API version documented 2026-03-10 | GitHub Issues create/read/update boundary for engineering-owned remediation synchronization | https://docs.github.com/en/rest/issues/issues |
+| GitHub | Managing your personal access tokens | Current online documentation accessed August 2026 | Fine-grained, single-repository least-privilege token setup for the free integration | https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens |
 
 ## Use Boundary
 

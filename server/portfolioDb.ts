@@ -15,12 +15,14 @@ import {
   sources,
 } from "../drizzle/schema";
 import { getDb } from "./db";
+import { ensureControlAssuranceSeeded } from "./controlAssuranceSeed";
 import { ensurePortfolioSeeded } from "./portfolioSeed";
 
 async function readyDb() {
   const db = await getDb();
   if (!db) return null;
   await ensurePortfolioSeeded();
+  await ensureControlAssuranceSeeded();
   return db;
 }
 

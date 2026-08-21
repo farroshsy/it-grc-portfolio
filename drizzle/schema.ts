@@ -5,6 +5,13 @@ export const frameworkValues = ["ISO 27001", "PCI DSS", "BI/OJK", "NIST", "Cloud
 export const artifactTypeValues = ["Risk Register", "Control Matrix", "Gap Analysis", "Regulatory Mapping", "Control Testing", "Remediation Plan"] as const;
 export const auditRequestStatusValues = ["Requested", "In review", "Closed", "Overdue"] as const;
 export const policyStatusValues = ["Current", "Review due"] as const;
+export const assuranceControlStatusValues = ["Evidence requested", "In testing", "Effective", "Exception"] as const;
+export const evidenceSubmissionStatusValues = ["Draft", "Submitted", "Under review", "Accepted", "Rejected"] as const;
+export const assuranceTestResultValues = ["Effective", "Exception"] as const;
+export const findingStatusValues = ["Open", "Remediation planned", "In remediation", "Pending retest", "Closed", "Risk accepted"] as const;
+export const treatmentChoiceValues = ["Remediation", "Risk acceptance"] as const;
+export const riskAcceptanceStatusValues = ["Proposed", "Approved", "Rejected", "Expired"] as const;
+export const remediationSyncStatusValues = ["Not connected", "Ready to create", "Synced open", "Synced closed", "Retest required"] as const;
 
 /** Core user table backing the preconfigured authentication flow. */
 export const users = mysqlTable("users", {
@@ -172,6 +179,98 @@ export const policyRecords = mysqlTable("policy_records", {
   index("policy_records_domain_idx").on(table.domain),
   uniqueIndex("policy_record_identifier_unique").on(table.policyId),
 ]);
+
+export const grcSystems = mysqlTable("grc_systems", {
+  id: int("id").autoincrement().primaryKey(),
+  systemId: varchar("systemId", { length: 40 }).notNull(),
+  name: varchar("name", { length: 180 }).notNull(),
+  owner: varchar("owner", { length: 80 }).notNull(),
+  criticality: varchar("criticality", { length: 32 }).notNull(),
+  dataClassification: varchar("dataClassification", { length: 80 }).notNull(),
+  status: varchar("status", { length: 40 }).notNull(),
+  provenance: mysqlEnum("provenance", provenanceValues).notNull(),
+}, (table) => [uniqueIndex("grc_system_identifier_unique").on(table.systemId)]);
+
+export const assuranceControls = mysqlTable("assurance_controls", {
+  id: int("id").autoincrement().primaryKey(),
+  controlId: varchar("controlId", { length: 40 }).notNull(),
+  systemId: varchar("systemId", { length: 40 }).notNull(),
+  title: varchar("title", { length: 250 }).notNull(),
+  objective: text("objective").notNull(),
+  owner: varchar("owner", { length: 80 }).notNull(),
+  frequency: varchar("frequency", { length: 60 }).notNull(),
+  framework: varchar("framework", { length: 80 }).notNull(),
+  status: mysqlEnum("status", assuranceControlStatusValues).notNull(),
+  provenance: mysqlEnum("provenance", provenanceValues).notNull(),
+}, (table) => [index("assurance_controls_system_idx").on(table.systemId), uniqueIndex("assurance_control_identifier_unique").on(table.controlId)]);
+
+export const evidenceSubmissions = mysqlTable("evidence_submissions", {
+  id: int("id").autoincrement().primaryKey(),
+  submissionId: varchar("submissionId", { length: 40 }).notNull(),
+  controlId: varchar("controlId", { length: 40 }).notNull(),
+  status: mysqlEnum("status", evidenceSubmissionStatusValues).notNull(),
+  evidenceSummary: text("evidenceSummary").notNull(),
+  submittedBy: varchar("submittedBy", { length: 80 }).notNull(),
+  submittedAt: timestamp("submittedAt").notNull(),
+  reviewedBy: varchar("reviewedBy", { length: 80 }),
+  reviewNote: text("reviewNote"),
+  provenance: mysqlEnum("provenance", provenanceValues).notNull(),
+}, (table) => [index("evidence_submissions_control_idx").on(table.controlId), index("evidence_submissions_status_idx").on(table.status), uniqueIndex("evidence_submission_identifier_unique").on(table.submissionId)]);
+
+export const assuranceTests = mysqlTable("assurance_tests", {
+  id: int("id").autoincrement().primaryKey(),
+  assuranceTestId: varchar("assuranceTestId", { length: 40 }).notNull(),
+  controlId: varchar("controlId", { length: 40 }).notNull(),
+  submissionId: varchar("submissionId", { length: 40 }).notNull(),
+  testProcedure: text("testProcedure").notNull(),
+  result: mysqlEnum("result", assuranceTestResultValues).notNull(),
+  conclusion: text("conclusion").notNull(),
+  testedBy: varchar("testedBy", { length: 80 }).notNull(),
+  testedAt: timestamp("testedAt").notNull(),
+  provenance: mysqlEnum("provenance", provenanceValues).notNull(),
+}, (table) => [index("assurance_tests_control_idx").on(table.controlId), index("assurance_tests_submission_idx").on(table.submissionId), uniqueIndex("assurance_test_identifier_unique").on(table.assuranceTestId)]);
+
+export const grcFindings = mysqlTable("grc_findings", {
+  id: int("id").autoincrement().primaryKey(),
+  findingId: varchar("findingId", { length: 40 }).notNull(),
+  assuranceTestId: varchar("assuranceTestId", { length: 40 }).notNull(),
+  controlId: varchar("controlId", { length: 40 }).notNull(),
+  title: varchar("title", { length: 250 }).notNull(),
+  description: text("description").notNull(),
+  severity: varchar("severity", { length: 40 }).notNull(),
+  owner: varchar("owner", { length: 80 }).notNull(),
+  status: mysqlEnum("status", findingStatusValues).notNull(),
+  treatmentChoice: mysqlEnum("treatmentChoice", treatmentChoiceValues).notNull(),
+  dueDate: timestamp("dueDate").notNull(),
+  provenance: mysqlEnum("provenance", provenanceValues).notNull(),
+}, (table) => [index("grc_findings_control_idx").on(table.controlId), index("grc_findings_status_idx").on(table.status), uniqueIndex("grc_finding_identifier_unique").on(table.findingId)]);
+
+export const riskAcceptances = mysqlTable("risk_acceptances", {
+  id: int("id").autoincrement().primaryKey(),
+  acceptanceId: varchar("acceptanceId", { length: 40 }).notNull(),
+  findingId: varchar("findingId", { length: 40 }).notNull(),
+  status: mysqlEnum("status", riskAcceptanceStatusValues).notNull(),
+  rationale: text("rationale").notNull(),
+  riskOwner: varchar("riskOwner", { length: 80 }).notNull(),
+  approver: varchar("approver", { length: 80 }).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  decisionAt: timestamp("decisionAt"),
+  provenance: mysqlEnum("provenance", provenanceValues).notNull(),
+}, (table) => [index("risk_acceptances_finding_idx").on(table.findingId), uniqueIndex("risk_acceptance_identifier_unique").on(table.acceptanceId)]);
+
+export const githubRemediationLinks = mysqlTable("github_remediation_links", {
+  id: int("id").autoincrement().primaryKey(),
+  linkId: varchar("linkId", { length: 40 }).notNull(),
+  findingId: varchar("findingId", { length: 40 }).notNull(),
+  provider: varchar("provider", { length: 40 }).notNull(),
+  repository: varchar("repository", { length: 160 }).notNull(),
+  issueNumber: int("issueNumber"),
+  issueUrl: text("issueUrl"),
+  syncStatus: mysqlEnum("syncStatus", remediationSyncStatusValues).notNull(),
+  lastSyncedAt: timestamp("lastSyncedAt"),
+  lastError: text("lastError"),
+  provenance: mysqlEnum("provenance", provenanceValues).notNull(),
+}, (table) => [index("github_remediation_finding_idx").on(table.findingId), uniqueIndex("github_remediation_link_identifier_unique").on(table.linkId)]);
 
 export const sources = mysqlTable("sources", {
   id: int("id").autoincrement().primaryKey(),
