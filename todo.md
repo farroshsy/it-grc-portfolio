@@ -97,3 +97,10 @@
 - [x] Add an optional FlowGuard trace-export ingestion route that validates and evaluates uploaded trace JSON against the payment-control contract without requiring a live external connector.
 - [x] Test role administration, evidence-retention lifecycle enforcement, and trace-ingestion results; verify responsive behavior and save a checkpoint.
 - [x] Save a validated checkpoint covering the administrator role-assignment console, evidence-retention lifecycle, and FlowGuard trace-export ingestion.
+- [x] Define Grafana HMAC webhook validation, role-assignment audit-event, bulk-assignment, and evidence-retention-template boundaries.
+- [x] Build administrator bulk user search and role management with a persistent role-assignment audit history.
+- [x] Implement configurable evidence-type retention policy templates and apply selected templates to managed attachment lifecycle records.
+- [x] Preserve the inactive-by-default Grafana HMAC-SHA256 webhook endpoint and manual-import fallback; defer activation until the user later provides a shared secret.
+- [x] Test bulk role assignment, audit logging, retention-template application, webhook verification, and provider selection; verify responsive behavior and save a checkpoint.
+- [x] Document the intentionally deferred Grafana shared-secret handoff; the verified provider configuration remains inactive until the user supplies it in a future session.
+- [x] Save a validated checkpoint for bulk user search, role-assignment audit history, retention templates, and the inactive Grafana webhook design.

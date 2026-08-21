@@ -1,15 +1,19 @@
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import {
   assuranceControls,
   assuranceTests,
   evidenceAttachments,
+  evidenceRetentionTemplates,
   evidenceSubmissions,
   flowguardControlContracts,
   flowguardControlExecutions,
   flowguardExceptions,
   flowguardTraceImports,
+  flowguardWebhookConfigs,
+  flowguardWebhookDeliveries,
   githubRemediationLinks,
   grcFindings,
+  grcRoleAssignmentEvents,
   grcSystems,
   grcUserRoles,
   riskAcceptances,
@@ -156,19 +160,69 @@ export async function setEvidenceAttachmentRetention(input: { attachmentId: stri
 export async function getAdministrationData() {
   const db = await readyDb();
   if (!db) throw new Error("The control-assurance datastore is unavailable.");
-  const [workspaceUsers, roleAssignments, attachments] = await Promise.all([
+  const [workspaceUsers, roleAssignments, attachments, roleEvents, retentionTemplates, webhookConfigs] = await Promise.all([
     db.select().from(users).orderBy(asc(users.name)),
     db.select().from(grcUserRoles).orderBy(asc(grcUserRoles.userId)),
     db.select().from(evidenceAttachments).orderBy(asc(evidenceAttachments.retentionUntil)),
+    db.select().from(grcRoleAssignmentEvents).orderBy(desc(grcRoleAssignmentEvents.occurredAt)).limit(40),
+    db.select().from(evidenceRetentionTemplates).orderBy(asc(evidenceRetentionTemplates.evidenceType)),
+    db.select().from(flowguardWebhookConfigs).orderBy(asc(flowguardWebhookConfigs.provider)),
   ]);
-  return { users: workspaceUsers, roleAssignments, attachments: await resolveAttachmentRetention(attachments) };
+  return { users: workspaceUsers, roleAssignments, attachments: await resolveAttachmentRetention(attachments), roleEvents, retentionTemplates, webhookConfigs };
 }
 
-export async function assignWorkspaceRole(input: { userId: number; workspaceRole: "control_owner" | "grc_analyst" | "risk_approver"; active: boolean; assignedBy: string }) {
+export async function assignWorkspaceRole(input: { userId: number; workspaceRole: "control_owner" | "grc_analyst" | "risk_approver"; active: boolean; assignedBy: string; batchId?: string | null }) {
   const db = await readyDb();
   if (!db) throw new Error("The control-assurance datastore is unavailable.");
+  const [existing] = await db.select().from(grcUserRoles).where(and(eq(grcUserRoles.userId, input.userId), eq(grcUserRoles.workspaceRole, input.workspaceRole))).limit(1);
   await db.insert(grcUserRoles).values({ ...input }).onDuplicateKeyUpdate({ set: { active: input.active, assignedBy: input.assignedBy } });
+  await db.insert(grcRoleAssignmentEvents).values({ eventId: `RAE-${Date.now().toString().slice(-6)}-${Math.random().toString(36).slice(2, 7)}`, batchId: input.batchId ?? null, userId: input.userId, workspaceRole: input.workspaceRole, previousActive: existing?.active ?? null, resultingActive: input.active, assignedBy: input.assignedBy, occurredAt: new Date() });
   return { success: true as const };
+}
+
+export async function bulkAssignWorkspaceRole(input: { userIds: number[]; workspaceRole: "control_owner" | "grc_analyst" | "risk_approver"; active: boolean; assignedBy: string }) {
+  if (!input.userIds.length || input.userIds.length > 100) throw new Error("Select between one and 100 users for a bulk role update.");
+  const batchId = `RAB-${Date.now().toString().slice(-6)}`;
+  await Promise.all(input.userIds.map((userId) => assignWorkspaceRole({ ...input, userId, batchId })));
+  return { success: true as const, batchId, updatedUsers: input.userIds.length };
+}
+
+export async function upsertRetentionTemplate(input: { templateId?: string; title: string; evidenceType: "Access review" | "Change record" | "Incident record" | "Vulnerability scan" | "Technical trace" | "General"; retentionDays: number; retentionNote: string; active: boolean }) {
+  const db = await readyDb();
+  if (!db) throw new Error("The control-assurance datastore is unavailable.");
+  const templateId = input.templateId ?? `RTP-${Date.now().toString().slice(-6)}`;
+  await db.insert(evidenceRetentionTemplates).values({ ...input, templateId }).onDuplicateKeyUpdate({ set: { title: input.title, evidenceType: input.evidenceType, retentionDays: input.retentionDays, retentionNote: input.retentionNote, active: input.active } });
+  return { success: true as const, templateId };
+}
+
+export async function applyRetentionTemplate(input: { attachmentId: string; templateId: string }) {
+  const db = await readyDb();
+  if (!db) throw new Error("The control-assurance datastore is unavailable.");
+  const [[attachment], [template]] = await Promise.all([db.select().from(evidenceAttachments).where(eq(evidenceAttachments.attachmentId, input.attachmentId)).limit(1), db.select().from(evidenceRetentionTemplates).where(eq(evidenceRetentionTemplates.templateId, input.templateId)).limit(1)]);
+  if (!attachment || !template || !template.active) throw new Error("The attachment or active retention template does not exist.");
+  const retentionUntil = new Date(attachment.uploadedAt); retentionUntil.setUTCDate(retentionUntil.getUTCDate() + template.retentionDays);
+  await db.update(evidenceAttachments).set({ evidenceType: template.evidenceType, retentionTemplateId: template.templateId, retentionUntil, retentionStatus: "Active", expiredAt: null, retentionNote: template.retentionNote }).where(eq(evidenceAttachments.attachmentId, attachment.attachmentId));
+  return { success: true as const, retentionUntil };
+}
+
+export async function setGrafanaWebhookConfig(input: { active: boolean; updatedBy: string }) {
+  const db = await readyDb();
+  if (!db) throw new Error("The control-assurance datastore is unavailable.");
+  await db.insert(flowguardWebhookConfigs).values({ configId: "FGW-GRAF-001", provider: "Grafana", active: input.active, endpointPath: "/api/webhooks/flowguard/grafana", updatedBy: input.updatedBy, updatedAt: new Date() }).onDuplicateKeyUpdate({ set: { active: input.active, updatedBy: input.updatedBy, updatedAt: new Date() } });
+  return { success: true as const, active: input.active };
+}
+
+export async function getGrafanaWebhookConfig() {
+  const db = await readyDb();
+  if (!db) return null;
+  const [config] = await db.select().from(flowguardWebhookConfigs).where(eq(flowguardWebhookConfigs.provider, "Grafana")).limit(1);
+  return config ?? null;
+}
+
+export async function recordGrafanaWebhookDelivery(input: { deliveryId: string; status: string; executionId?: string | null }) {
+  const db = await readyDb();
+  if (!db) throw new Error("The control-assurance datastore is unavailable.");
+  try { await db.insert(flowguardWebhookDeliveries).values({ deliveryId: input.deliveryId, provider: "Grafana", receivedAt: new Date(), status: input.status, executionId: input.executionId ?? null }); return true; } catch { return false; }
 }
 
 export async function ingestFlowGuardPaymentTrace(input: { rawTrace: string; sourceName: string; ingestedBy: string }) {

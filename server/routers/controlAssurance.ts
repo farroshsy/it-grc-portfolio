@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { assignWorkspaceRole, attachEvidenceFile, decideRiskAcceptance, getAdministrationData, getComplianceDashboardData, getControlAssuranceHubData, getFlowguardVerificationData, getRemediationExportPayload, importRemediationSnapshot, ingestFlowGuardPaymentTrace, listEvidenceAttachments, listWorkspaceEvidenceAttachments, markReadyForGithubIssue, proposeRiskAcceptance, recordTestDecision, setEvidenceAttachmentRetention, setEvidenceReview, setFindingTreatment, submitEvidence, syncRemediationStatus } from "../controlAssuranceDb";
+import { applyRetentionTemplate, assignWorkspaceRole, attachEvidenceFile, bulkAssignWorkspaceRole, decideRiskAcceptance, getAdministrationData, getComplianceDashboardData, getControlAssuranceHubData, getFlowguardVerificationData, getRemediationExportPayload, importRemediationSnapshot, ingestFlowGuardPaymentTrace, listEvidenceAttachments, listWorkspaceEvidenceAttachments, markReadyForGithubIssue, proposeRiskAcceptance, recordTestDecision, setEvidenceAttachmentRetention, setEvidenceReview, setFindingTreatment, setGrafanaWebhookConfig, submitEvidence, syncRemediationStatus, upsertRetentionTemplate } from "../controlAssuranceDb";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { canPerformWorkspaceAction, getWorkspaceRoles, type WorkspaceRole } from "../grcAccess";
 
@@ -35,7 +35,11 @@ export const controlAssuranceRouter = router({
     return data;
   }),
   assignWorkspaceRole: adminProcedure.input(z.object({ userId: z.number().int().positive(), workspaceRole: z.enum(["control_owner", "grc_analyst", "risk_approver"]), active: z.boolean() })).mutation(async ({ input, ctx }) => assignWorkspaceRole({ ...input, assignedBy: ctx.user.name || "Workspace administrator" })),
+  bulkAssignWorkspaceRole: adminProcedure.input(z.object({ userIds: z.array(z.number().int().positive()).min(1).max(100), workspaceRole: z.enum(["control_owner", "grc_analyst", "risk_approver"]), active: z.boolean() })).mutation(async ({ input, ctx }) => bulkAssignWorkspaceRole({ ...input, assignedBy: ctx.user.name || "Workspace administrator" })),
   setAttachmentRetention: adminProcedure.input(z.object({ attachmentId: z.string().min(1).max(40), retentionUntil: z.coerce.date(), retentionStatus: z.enum(["Active", "Legal hold"]), retentionNote: z.string().max(500).nullable() })).mutation(async ({ input }) => setEvidenceAttachmentRetention(input)),
+  upsertRetentionTemplate: adminProcedure.input(z.object({ templateId: z.string().min(1).max(40).optional(), title: z.string().min(3).max(120), evidenceType: z.enum(["Access review", "Change record", "Incident record", "Vulnerability scan", "Technical trace", "General"]), retentionDays: z.number().int().min(1).max(3650), retentionNote: z.string().min(3).max(500), active: z.boolean() })).mutation(async ({ input }) => upsertRetentionTemplate(input)),
+  applyRetentionTemplate: adminProcedure.input(z.object({ attachmentId: z.string().min(1).max(40), templateId: z.string().min(1).max(40) })).mutation(async ({ input }) => applyRetentionTemplate(input)),
+  setGrafanaWebhook: adminProcedure.input(z.object({ active: z.boolean() })).mutation(async ({ input, ctx }) => setGrafanaWebhookConfig({ ...input, updatedBy: ctx.user.name || "Workspace administrator" })),
   submitEvidence: protectedProcedure.input(z.object({ controlId: z.string().min(1).max(40), evidenceSummary: z.string().min(12).max(2000) })).mutation(async ({ input, ctx }) => {
     await assertWorkspaceRole(ctx.user, ["control_owner"]);
     return submitEvidence({ ...input, submittedBy: ctx.user.name || "Authenticated control owner" });

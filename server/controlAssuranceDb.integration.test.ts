@@ -5,7 +5,7 @@ const ensureControlAssuranceSeeded = vi.hoisted(() => vi.fn());
 vi.mock("./db", () => ({ getDb }));
 vi.mock("./controlAssuranceSeed", () => ({ ensureControlAssuranceSeeded }));
 
-import { decideRiskAcceptance, proposeRiskAcceptance, recordTestDecision, setFindingTreatment, submitEvidence, syncRemediationStatus } from "./controlAssuranceDb";
+import { applyRetentionTemplate, bulkAssignWorkspaceRole, decideRiskAcceptance, proposeRiskAcceptance, recordTestDecision, setFindingTreatment, submitEvidence, syncRemediationStatus } from "./controlAssuranceDb";
 
 describe("controlAssuranceDb controlled persistence lifecycle", () => {
   beforeEach(() => { vi.clearAllMocks(); ensureControlAssuranceSeeded.mockResolvedValue(undefined); });
@@ -36,5 +36,33 @@ describe("controlAssuranceDb controlled persistence lifecycle", () => {
     expect(updates).toContainEqual(expect.objectContaining({ status: "Exception" }));
     expect(updates).toContainEqual(expect.objectContaining({ status: "Open", treatmentChoice: "Remediation" }));
     expect(updates).toContainEqual(expect.objectContaining({ lastError: expect.stringContaining("No external issue") }));
+  });
+
+  it("records a separate attributable audit event for every user in a bulk workspace-role change", async () => {
+    const selects = [[], []];
+    const inserts: unknown[] = [];
+    const db = {
+      select: () => ({ from: () => ({ where: () => ({ limit: () => Promise.resolve(selects.shift() ?? []) }) }) }),
+      insert: (_table: unknown) => ({ values: (value: unknown) => { inserts.push(value); return { onDuplicateKeyUpdate: () => Promise.resolve() }; } }),
+    };
+    getDb.mockResolvedValue(db);
+    const result = await bulkAssignWorkspaceRole({ userIds: [7, 8], workspaceRole: "grc_analyst", active: true, assignedBy: "Administrator" });
+    expect(result).toMatchObject({ updatedUsers: 2, batchId: expect.stringMatching(/^RAB-/) });
+    const events = inserts.filter((value): value is { userId: number; workspaceRole: string; batchId: string } => Boolean(value && typeof value === "object" && "eventId" in value));
+    expect(events).toHaveLength(2);
+    expect(events).toEqual(expect.arrayContaining([expect.objectContaining({ userId: 7, workspaceRole: "grc_analyst", batchId: result.batchId }), expect.objectContaining({ userId: 8, workspaceRole: "grc_analyst", batchId: result.batchId })]));
+  });
+
+  it("applies an active evidence-type retention template from the upload date without changing stored file content", async () => {
+    const selects = [[{ attachmentId: "ATT-001", uploadedAt: new Date("2026-08-01T00:00:00Z") }], [{ templateId: "RTP-TRACE-01", evidenceType: "Technical trace", retentionDays: 365, retentionNote: "Retain evidence references for one year.", active: true }]];
+    const updates: unknown[] = [];
+    const db = {
+      select: () => ({ from: () => ({ where: () => ({ limit: () => Promise.resolve(selects.shift() ?? []) }) }) }),
+      update: (_table: unknown) => ({ set: (value: unknown) => { updates.push(value); return { where: () => Promise.resolve() }; } }),
+    };
+    getDb.mockResolvedValue(db);
+    const result = await applyRetentionTemplate({ attachmentId: "ATT-001", templateId: "RTP-TRACE-01" });
+    expect(result.retentionUntil.toISOString()).toBe("2027-08-01T00:00:00.000Z");
+    expect(updates).toContainEqual(expect.objectContaining({ evidenceType: "Technical trace", retentionTemplateId: "RTP-TRACE-01", retentionStatus: "Active", retentionNote: "Retain evidence references for one year." }));
   });
 });

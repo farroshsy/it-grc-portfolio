@@ -2,10 +2,12 @@ import { and, eq } from "drizzle-orm";
 import {
   assuranceControls,
   assuranceTests,
+  evidenceRetentionTemplates,
   evidenceSubmissions,
   flowguardControlContracts,
   flowguardControlExecutions,
   flowguardExceptions,
+  flowguardWebhookConfigs,
   githubRemediationLinks,
   grcFindings,
   grcSystems,
@@ -68,6 +70,13 @@ const flowguardExceptionRecords = [
   { exceptionId: "FG-EXC-001", executionId: "FGX-001", linkedFindingId: null, title: "Payment completion trace lacks settlement confirmation", owner: "Platform Engineering", dueDate: "2026-09-12", remediation: "Add settlement-event verification and retain the resulting evidence hash for retest.", retestStatus: "Retest required", status: "Open", provenance },
 ];
 
+const retentionTemplates = [
+  { templateId: "RTP-ACCESS-01", title: "Privileged access review evidence", evidenceType: "Access review" as const, retentionDays: 365, retentionNote: "Retain approval, scope, and closure evidence for one year after submission.", active: true },
+  { templateId: "RTP-CHANGE-01", title: "Production change evidence", evidenceType: "Change record" as const, retentionDays: 730, retentionNote: "Retain change approval, test, and rollback evidence for two years after submission.", active: true },
+  { templateId: "RTP-INCIDENT-01", title: "Incident response evidence", evidenceType: "Incident record" as const, retentionDays: 1095, retentionNote: "Retain incident decision and closure evidence for three years after submission.", active: true },
+  { templateId: "RTP-TRACE-01", title: "Technical trace verification", evidenceType: "Technical trace" as const, retentionDays: 365, retentionNote: "Retain machine-generated technical-control evidence references for one year after submission.", active: true },
+];
+
 let seeding: Promise<void> | null = null;
 
 export async function ensureControlAssuranceSeeded() {
@@ -101,6 +110,10 @@ async function seed() {
   if (!executionExists) await db.insert(flowguardControlExecutions).values(flowguardExecutions.map((item) => ({ ...item, occurredAt: new Date(item.occurredAt) })));
   const [exceptionExists] = await db.select({ id: flowguardExceptions.id }).from(flowguardExceptions).where(eq(flowguardExceptions.exceptionId, "FG-EXC-001")).limit(1);
   if (!exceptionExists) await db.insert(flowguardExceptions).values(flowguardExceptionRecords.map((item) => ({ ...item, dueDate: new Date(item.dueDate) })));
+  const [templateExists] = await db.select({ id: evidenceRetentionTemplates.id }).from(evidenceRetentionTemplates).where(eq(evidenceRetentionTemplates.templateId, "RTP-ACCESS-01")).limit(1);
+  if (!templateExists) await db.insert(evidenceRetentionTemplates).values(retentionTemplates);
+  const [grafanaConfigExists] = await db.select({ id: flowguardWebhookConfigs.id }).from(flowguardWebhookConfigs).where(eq(flowguardWebhookConfigs.provider, "Grafana")).limit(1);
+  if (!grafanaConfigExists) await db.insert(flowguardWebhookConfigs).values({ configId: "FGW-GRAF-001", provider: "Grafana", active: false, endpointPath: "/api/webhooks/flowguard/grafana", updatedBy: "System default", updatedAt: new Date() });
 }
 
-export const simulatedControlAssuranceScenario = { systems, controls, submissions, tests, findings, acceptances, remediationLinks, flowguardContracts, flowguardExecutions, flowguardExceptionRecords };
+export const simulatedControlAssuranceScenario = { systems, controls, submissions, tests, findings, acceptances, remediationLinks, flowguardContracts, flowguardExecutions, flowguardExceptionRecords, retentionTemplates };

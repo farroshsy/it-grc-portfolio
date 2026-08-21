@@ -10,6 +10,10 @@ const operations = vi.hoisted(() => ({
   listWorkspaceEvidenceAttachments: vi.fn(),
   getAdministrationData: vi.fn(),
   assignWorkspaceRole: vi.fn(),
+  bulkAssignWorkspaceRole: vi.fn(),
+  upsertRetentionTemplate: vi.fn(),
+  applyRetentionTemplate: vi.fn(),
+  setGrafanaWebhookConfig: vi.fn(),
   setEvidenceAttachmentRetention: vi.fn(),
   ingestFlowGuardPaymentTrace: vi.fn(),
   setEvidenceReview: vi.fn(),
@@ -91,15 +95,25 @@ describe("controlAssuranceRouter", () => {
   });
 
   it("limits role assignment and evidence-retention configuration to the platform administrator", async () => {
-    operations.getAdministrationData.mockResolvedValue({ users: [{ id: 2, name: "Control Owner" }], roleAssignments: [], attachments: [{ attachmentId: "ATT-001", retentionStatus: "Active" }] });
+    operations.getAdministrationData.mockResolvedValue({ users: [{ id: 2, name: "Control Owner" }], roleAssignments: [], attachments: [{ attachmentId: "ATT-001", retentionStatus: "Active" }], roleEvents: [], retentionTemplates: [], webhookConfigs: [] });
     operations.assignWorkspaceRole.mockResolvedValue({ success: true });
+    operations.bulkAssignWorkspaceRole.mockResolvedValue({ success: true, batchId: "RAB-001", updatedUsers: 2 });
     operations.setEvidenceAttachmentRetention.mockResolvedValue({ success: true });
+    operations.upsertRetentionTemplate.mockResolvedValue({ success: true, templateId: "RTP-001" });
+    operations.applyRetentionTemplate.mockResolvedValue({ success: true, retentionUntil: new Date("2027-08-21") });
+    operations.setGrafanaWebhookConfig.mockResolvedValue({ success: true, active: false });
     const caller = controlAssuranceRouter.createCaller(authenticatedContext);
     await expect(caller.administration()).resolves.toMatchObject({ users: [{ id: 2 }] });
     await expect(caller.assignWorkspaceRole({ userId: 2, workspaceRole: "control_owner", active: true })).resolves.toEqual({ success: true });
+    await expect(caller.bulkAssignWorkspaceRole({ userIds: [2, 3], workspaceRole: "grc_analyst", active: true })).resolves.toMatchObject({ updatedUsers: 2 });
     await expect(caller.setAttachmentRetention({ attachmentId: "ATT-001", retentionUntil: new Date("2027-08-21"), retentionStatus: "Legal hold", retentionNote: "Open audit request" })).resolves.toEqual({ success: true });
+    await expect(caller.upsertRetentionTemplate({ title: "Change evidence", evidenceType: "Change record", retentionDays: 730, retentionNote: "Retain approved production change evidence.", active: true })).resolves.toMatchObject({ templateId: "RTP-001" });
+    await expect(caller.applyRetentionTemplate({ attachmentId: "ATT-001", templateId: "RTP-001" })).resolves.toMatchObject({ success: true });
+    await expect(caller.setGrafanaWebhook({ active: false })).resolves.toMatchObject({ active: false });
     expect(operations.assignWorkspaceRole).toHaveBeenCalledWith({ userId: 2, workspaceRole: "control_owner", active: true, assignedBy: "Portfolio Owner" });
     expect(operations.setEvidenceAttachmentRetention).toHaveBeenCalledWith(expect.objectContaining({ attachmentId: "ATT-001", retentionStatus: "Legal hold" }));
+    expect(operations.bulkAssignWorkspaceRole).toHaveBeenCalledWith(expect.objectContaining({ userIds: [2, 3], workspaceRole: "grc_analyst", assignedBy: "Portfolio Owner" }));
+    expect(operations.setGrafanaWebhookConfig).toHaveBeenCalledWith({ active: false, updatedBy: "Portfolio Owner" });
   });
 
   it("accepts a trace export only through an authenticated GRC analyst workflow", async () => {

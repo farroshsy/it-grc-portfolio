@@ -15,6 +15,7 @@ export const remediationSyncStatusValues = ["Not connected", "Ready to create", 
 export const grcWorkspaceRoleValues = ["control_owner", "grc_analyst", "risk_approver"] as const;
 export const technicalVerdictValues = ["PASS", "FAIL", "INCONCLUSIVE"] as const;
 export const evidenceRetentionStatusValues = ["Active", "Expired", "Legal hold"] as const;
+export const evidenceTypeValues = ["Access review", "Change record", "Incident record", "Vulnerability scan", "Technical trace", "General"] as const;
 
 /** Core user table backing the preconfigured authentication flow. */
 export const users = mysqlTable("users", {
@@ -40,6 +41,23 @@ export const grcUserRoles = mysqlTable("grc_user_roles", {
 }, (table) => [
   index("grc_user_roles_user_idx").on(table.userId),
   uniqueIndex("grc_user_role_unique").on(table.userId, table.workspaceRole),
+]);
+
+/** Immutable accountability ledger for administrator role assignments, including bulk operations. */
+export const grcRoleAssignmentEvents = mysqlTable("grc_role_assignment_events", {
+  id: int("id").autoincrement().primaryKey(),
+  eventId: varchar("eventId", { length: 40 }).notNull(),
+  batchId: varchar("batchId", { length: 40 }),
+  userId: int("userId").notNull(),
+  workspaceRole: mysqlEnum("workspaceRole", grcWorkspaceRoleValues).notNull(),
+  previousActive: boolean("previousActive"),
+  resultingActive: boolean("resultingActive").notNull(),
+  assignedBy: varchar("assignedBy", { length: 80 }).notNull(),
+  occurredAt: timestamp("occurredAt").notNull(),
+}, (table) => [
+  uniqueIndex("grc_role_assignment_event_identifier_unique").on(table.eventId),
+  index("grc_role_assignment_event_user_idx").on(table.userId, table.occurredAt),
+  index("grc_role_assignment_event_batch_idx").on(table.batchId),
 ]);
 
 export const caseStudies = mysqlTable("case_studies", {
@@ -249,11 +267,29 @@ export const evidenceAttachments = mysqlTable("evidence_attachments", {
   retentionStatus: mysqlEnum("retentionStatus", evidenceRetentionStatusValues).default("Active").notNull(),
   expiredAt: timestamp("expiredAt"),
   retentionNote: text("retentionNote"),
+  evidenceType: mysqlEnum("evidenceType", evidenceTypeValues).default("General").notNull(),
+  retentionTemplateId: varchar("retentionTemplateId", { length: 40 }),
   provenance: mysqlEnum("provenance", provenanceValues).notNull(),
 }, (table) => [
   index("evidence_attachments_submission_idx").on(table.submissionId),
   index("evidence_attachments_retention_idx").on(table.retentionUntil, table.retentionStatus),
   uniqueIndex("evidence_attachment_identifier_unique").on(table.attachmentId),
+]);
+
+/** Reusable administrator-managed lifecycle settings, categorized by evidence type. */
+export const evidenceRetentionTemplates = mysqlTable("evidence_retention_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  templateId: varchar("templateId", { length: 40 }).notNull(),
+  title: varchar("title", { length: 120 }).notNull(),
+  evidenceType: mysqlEnum("evidenceType", evidenceTypeValues).notNull(),
+  retentionDays: int("retentionDays").notNull(),
+  retentionNote: text("retentionNote").notNull(),
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  uniqueIndex("evidence_retention_template_identifier_unique").on(table.templateId),
+  index("evidence_retention_template_type_idx").on(table.evidenceType, table.active),
 ]);
 
 export const assuranceTests = mysqlTable("assurance_tests", {
@@ -386,6 +422,33 @@ export const flowguardTraceImports = mysqlTable("flowguard_trace_imports", {
   uniqueIndex("flowguard_trace_import_identifier_unique").on(table.importId),
   uniqueIndex("flowguard_trace_import_execution_unique").on(table.executionId),
   index("flowguard_trace_imported_at_idx").on(table.ingestedAt),
+]);
+
+/** Grafana is explicit and inactive by default; its HMAC secret is stored only in server environment configuration. */
+export const flowguardWebhookConfigs = mysqlTable("flowguard_webhook_configs", {
+  id: int("id").autoincrement().primaryKey(),
+  configId: varchar("configId", { length: 40 }).notNull(),
+  provider: varchar("provider", { length: 40 }).notNull(),
+  active: boolean("active").default(false).notNull(),
+  endpointPath: varchar("endpointPath", { length: 160 }).notNull(),
+  updatedBy: varchar("updatedBy", { length: 80 }).notNull(),
+  updatedAt: timestamp("updatedAt").notNull(),
+}, (table) => [
+  uniqueIndex("flowguard_webhook_config_identifier_unique").on(table.configId),
+  uniqueIndex("flowguard_webhook_provider_unique").on(table.provider),
+]);
+
+/** Lightweight idempotency and audit receipt; raw webhook payloads are never retained. */
+export const flowguardWebhookDeliveries = mysqlTable("flowguard_webhook_deliveries", {
+  id: int("id").autoincrement().primaryKey(),
+  deliveryId: varchar("deliveryId", { length: 96 }).notNull(),
+  provider: varchar("provider", { length: 40 }).notNull(),
+  receivedAt: timestamp("receivedAt").notNull(),
+  status: varchar("status", { length: 40 }).notNull(),
+  executionId: varchar("executionId", { length: 40 }),
+}, (table) => [
+  uniqueIndex("flowguard_webhook_delivery_identifier_unique").on(table.deliveryId),
+  index("flowguard_webhook_delivery_received_idx").on(table.receivedAt),
 ]);
 
 export const sources = mysqlTable("sources", {
