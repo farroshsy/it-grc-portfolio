@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import {
+  auditRequests,
   artifactRows,
   artifacts,
   caseStudies,
@@ -8,6 +9,7 @@ import {
   controlTests,
   controls,
   jobMappings,
+  policyRecords,
   remediationActions,
   risks,
   sources,
@@ -189,6 +191,21 @@ const globalSources = {
     note: "Used for cloud configuration benchmark themes; benchmark text is not reproduced.",
   },
 };
+
+const simulatedAuditRequests = [
+  { requestId: "PBC-001", title: "Quarterly privileged-access review and sampled approval trail", domain: "Access", owner: "Security Engineering", status: "Closed" as const, dueDate: "2026-08-28", closureEvidence: "Illustrative closure: access-review export, linked elevation approvals, and reviewer sign-off stored in the simulated evidence index.", provenance: "Simulated Case Study" as const },
+  { requestId: "PBC-002", title: "Production change sample with risk assessment and rollback evidence", domain: "Change", owner: "Platform Engineering", status: "In review" as const, dueDate: "2026-09-08", closureEvidence: "Illustrative closure criteria: approved change record, implementation log, validation output, and rollback decision where applicable.", provenance: "Simulated Case Study" as const },
+  { requestId: "PBC-003", title: "Security-alert review attestation and exception follow-up", domain: "Incident", owner: "Platform Engineering", status: "Requested" as const, dueDate: "2026-09-15", closureEvidence: "Illustrative closure criteria: named reviewer, review cadence evidence, exception record, and remediation linkage.", provenance: "Simulated Case Study" as const },
+  { requestId: "PBC-004", title: "Vulnerability remediation aging report and approved exceptions", domain: "Vulnerability", owner: "Cloud Security", status: "Overdue" as const, dueDate: "2026-08-21", closureEvidence: "Illustrative closure criteria: authenticated scan summary, remediation ticket sample, exception approval, and retest outcome.", provenance: "Simulated Case Study" as const },
+  { requestId: "PBC-005", title: "Payment-service inventory and third-party responsibility matrix", domain: "Third Party", owner: "Vendor Management", status: "Closed" as const, dueDate: "2026-08-31", closureEvidence: "Illustrative closure: current service inventory, responsibility matrix, and reviewed third-party assurance record.", provenance: "Simulated Case Study" as const },
+];
+
+const simulatedPolicies = [
+  { policyId: "POL-ACC-01", title: "Access Management Policy", domain: "Access", owner: "Security Engineering", version: "v1.2", reviewCycle: "Annual and upon material change", status: "Current" as const, purpose: "Defines how access is requested, approved, provisioned, reviewed, elevated, and revoked within the simulated control environment.", operatingRules: ["Role-based access is approved by a named business or system owner.", "Privileged elevation is time-bound and linked to an approved work item.", "Access reviews retain reviewer, population, decision, and exception evidence."], evidenceExamples: ["Access-review export", "Elevation approval", "Leaver deprovisioning record"], provenance: "Simulated Case Study" as const },
+  { policyId: "POL-CHG-01", title: "Technology Change Management Procedure", domain: "Change", owner: "Platform Engineering", version: "v1.1", reviewCycle: "Annual and upon material change", status: "Current" as const, purpose: "Defines risk-aware planning, approval, testing, implementation, and post-change evidence for production changes in the simulated environment.", operatingRules: ["Changes record risk, approver, implementation plan, and rollback approach before release.", "Emergency changes receive retrospective review within the defined operating window.", "Material control-impacting changes update linked evidence or risk records."], evidenceExamples: ["Approved change ticket", "Test evidence", "Post-implementation review"], provenance: "Simulated Case Study" as const },
+  { policyId: "POL-INC-01", title: "Incident Management Policy", domain: "Incident", owner: "Security Operations", version: "v1.3", reviewCycle: "Annual and after material incident lessons", status: "Current" as const, purpose: "Defines preparation, detection, response, recovery, communication, and lessons-learned expectations for the simulated security incident process.", operatingRules: ["Security events are triaged against defined severity and escalation criteria.", "Material incidents retain decision, communication, containment, and recovery records.", "Lessons learned are tracked to an owner and evaluated for control improvement."], evidenceExamples: ["Incident timeline", "Escalation decision", "Lessons-learned tracker"], provenance: "Simulated Case Study" as const },
+  { policyId: "POL-VUL-01", title: "Vulnerability Management Standard", domain: "Vulnerability", owner: "Cloud Security", version: "v1.0", reviewCycle: "Annual and upon material technology change", status: "Review due" as const, purpose: "Defines asset coverage, risk-based triage, remediation, exception approval, and retest expectations for simulated vulnerability-management operations.", operatingRules: ["Authorized scans cover the defined in-scope asset inventory.", "Severity, exploitability, exposure, and business context inform remediation priority.", "Exceptions expire, name an approver, and require compensating-control rationale."], evidenceExamples: ["Scan coverage report", "Remediation ticket", "Exception approval and retest"], provenance: "Simulated Case Study" as const },
+];
 
 const cloudCheckCode = `#!/usr/bin/env python3
 """Illustrative AWS configuration checks aligned to CIS benchmark themes.
@@ -426,7 +443,10 @@ async function seedPortfolio(): Promise<void> {
   if (!db) return;
 
   const existing = await db.select({ id: caseStudies.id }).from(caseStudies).limit(1);
-  if (existing.length > 0) return;
+  if (existing.length > 0) {
+    await seedSupplementaryEvidence(db);
+    return;
+  }
 
   for (const study of seedCases) {
     await db.insert(caseStudies).values({
@@ -483,4 +503,16 @@ async function seedPortfolio(): Promise<void> {
     { requirement: "Control testing, gaps, and remediation tracking", evidence: "Interactive tables in each case study with test, gap, and action records", caseStudySlug: "fintech-risk-assessment", displayOrder: 5 },
     { requirement: "Cross-functional, compliance-by-design communication", evidence: "Evidence chain showing owners, technical controls, and management-ready outcomes", caseStudySlug: "indonesia-regulatory-mapping", displayOrder: 6 },
   ]);
+  await seedSupplementaryEvidence(db);
+}
+
+async function seedSupplementaryEvidence(db: NonNullable<Awaited<ReturnType<typeof getDb>>>) {
+  const [fintech] = await db.select({ id: caseStudies.id }).from(caseStudies).where(eq(caseStudies.slug, "fintech-risk-assessment")).limit(1);
+  if (!fintech) return;
+  const [existingAudit, existingPolicies] = await Promise.all([
+    db.select({ id: auditRequests.id }).from(auditRequests).limit(1),
+    db.select({ id: policyRecords.id }).from(policyRecords).limit(1),
+  ]);
+  if (existingAudit.length === 0) await db.insert(auditRequests).values(simulatedAuditRequests.map((request) => ({ ...request, caseStudyId: fintech.id, dueDate: new Date(request.dueDate) })));
+  if (existingPolicies.length === 0) await db.insert(policyRecords).values(simulatedPolicies);
 }

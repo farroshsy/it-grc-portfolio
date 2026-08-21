@@ -24,3 +24,21 @@
 - [x] Make individual payment-security flows independently clickable with dedicated data-category, boundary, and evidence-detail inspection.
 - [x] Add automated coverage for the payment-flow selection model.
 - [x] Add an interaction-focused component test verifying that selecting a payment flow updates its inspector details.
+- [x] Define the simulated audit-request, policy-pack, and executive-briefing data contracts with required provenance safeguards.
+- [ ] Add concrete provenance-constrained database contracts for audit requests and policy-pack records.
+- [ ] Seed the new simulated evidence records and expose audit-room, policy-pack, and executive-briefing tRPC query contracts.
+- [ ] Add automated coverage for the new database-backed public query contracts and provenance safeguards.
+- [x] Add concrete provenance-constrained database contracts for audit requests and policy-pack records.
+- [x] Seed the new simulated evidence records and expose audit-room, policy-pack, and executive-briefing tRPC query contracts.
+- [x] Add automated coverage for the new database-backed public query contracts and provenance safeguards.
+- [x] Build a simulated audit room with PBC request ownership, status, due dates, and closure evidence records driven through tRPC queries.
+- [x] Build a concise policy-and-procedure pack covering access, change, incident, and vulnerability management with explicit simulated provenance.
+- [x] Build a one-page executive risk briefing that converts dashboard records into decision prompts and residual-risk asks.
+- [x] Test the new data contracts and user interactions, verify desktop/mobile presentation, and save the updated project checkpoint.
+- [x] Correct mobile navigation overflow so every portfolio evidence page remains reachable at narrow widths.
+- [ ] Add explicit loading, error, empty, and filtered-empty states to the simulated audit room.
+- [ ] Add explicit loading, error, and empty states to the simulated policy-pack page.
+- [ ] Add explicit loading, error, and empty states to the executive risk briefing.
+- [x] Add explicit loading, error, empty, and filtered-empty states to the simulated audit room.
+- [x] Add explicit loading, error, and empty states to the simulated policy-pack page.
+- [x] Add explicit loading, error, and empty states to the executive risk briefing.

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { getCaseStudyDetail, getDashboardData, getPortfolioHomeData } from "../portfolioDb";
+import { getAuditRoomData, getCaseStudyDetail, getDashboardData, getExecutiveBriefingData, getPolicyPackData, getPortfolioHomeData } from "../portfolioDb";
 import { publicProcedure, router } from "../_core/trpc";
 
 export const portfolioRouter = router({
@@ -14,6 +14,21 @@ export const portfolioRouter = router({
   dashboard: publicProcedure.query(async () => {
     const data = await getDashboardData();
     if (!data) throw new Error("The dashboard datastore is unavailable.");
+    return data;
+  }),
+  auditRoom: publicProcedure.query(async () => {
+    const data = await getAuditRoomData();
+    if (!data) throw new Error("The audit-room datastore is unavailable.");
+    return data;
+  }),
+  policyPack: publicProcedure.query(async () => {
+    const data = await getPolicyPackData();
+    if (!data) throw new Error("The policy-pack datastore is unavailable.");
+    return data;
+  }),
+  executiveBriefing: publicProcedure.query(async () => {
+    const data = await getExecutiveBriefingData();
+    if (!data) throw new Error("The executive-briefing datastore is unavailable.");
     return data;
   }),
 });

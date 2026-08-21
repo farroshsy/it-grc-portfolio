@@ -12,6 +12,9 @@ This register supports **independent research** and simulated case-study content
 | Center for Internet Security | CIS Benchmarks | Version varies by technology; current versions verified per benchmark | Automation mini-project reference for simulated cloud configuration checks | https://www.cisecurity.org/cis-benchmarks |
 | PCI Security Standards Council | PCI DSS Scoping and Segmentation Guidance for Modern Network Architectures | Information supplement announced 9 September 2024 | Simulated payment-security data-flow, CDE boundary, cloud asset inventory, and segmentation reasoning | https://blog.pcisecuritystandards.org/new-information-supplement-pci-dss-scoping-and-segmentation-guidance-for-modern-network-architectures |
 | PCI Security Standards Council | PCI SSC Glossary | Accessed 2026 | Definitions for a data-flow diagram and the cardholder data environment; summarized, not reproduced as compliance advice | https://www.pcisecuritystandards.org/glossary/ |
+| National Institute of Standards and Technology | NIST SP 800-53 Rev. 5, Security and Privacy Controls for Information Systems and Organizations | September 2020; updates as of 10 December 2020 | Control-family reference for simulated access, configuration/change, incident-response, and system-integrity policy summaries | https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final |
+| National Institute of Standards and Technology | NIST SP 800-61 Rev. 3, Incident Response Recommendations and Considerations for Cybersecurity Risk Management | April 2025 | Simulated incident-management policy and continuous-improvement reference | https://csrc.nist.gov/projects/incident-response |
+| National Institute of Standards and Technology | Cybersecurity Framework 2.0 | Published February 2024 | Simulated executive briefing and governance/risk communication reference | https://www.nist.gov/cyberframework |
 
 ## Use Boundary
 

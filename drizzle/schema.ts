@@ -3,6 +3,8 @@ import { boolean, index, int, json, mysqlEnum, mysqlTable, text, timestamp, uniq
 export const provenanceValues = ["Academic", "Independent Research", "Simulated Case Study"] as const;
 export const frameworkValues = ["ISO 27001", "PCI DSS", "BI/OJK", "NIST", "Cloud"] as const;
 export const artifactTypeValues = ["Risk Register", "Control Matrix", "Gap Analysis", "Regulatory Mapping", "Control Testing", "Remediation Plan"] as const;
+export const auditRequestStatusValues = ["Requested", "In review", "Closed", "Overdue"] as const;
+export const policyStatusValues = ["Current", "Review due"] as const;
 
 /** Core user table backing the preconfigured authentication flow. */
 export const users = mysqlTable("users", {
@@ -134,6 +136,41 @@ export const remediationActions = mysqlTable("remediation_actions", {
 }, (table) => [
   index("remediation_case_study_id_idx").on(table.caseStudyId),
   uniqueIndex("remediation_action_identifier_unique").on(table.actionId),
+]);
+
+export const auditRequests = mysqlTable("audit_requests", {
+  id: int("id").autoincrement().primaryKey(),
+  caseStudyId: int("caseStudyId").notNull(),
+  requestId: varchar("requestId", { length: 40 }).notNull(),
+  title: varchar("title", { length: 250 }).notNull(),
+  domain: varchar("domain", { length: 80 }).notNull(),
+  owner: varchar("owner", { length: 80 }).notNull(),
+  status: mysqlEnum("status", auditRequestStatusValues).notNull(),
+  dueDate: timestamp("dueDate").notNull(),
+  closureEvidence: text("closureEvidence").notNull(),
+  provenance: mysqlEnum("provenance", provenanceValues).notNull(),
+}, (table) => [
+  index("audit_requests_case_study_id_idx").on(table.caseStudyId),
+  index("audit_requests_status_idx").on(table.status),
+  uniqueIndex("audit_request_identifier_unique").on(table.requestId),
+]);
+
+export const policyRecords = mysqlTable("policy_records", {
+  id: int("id").autoincrement().primaryKey(),
+  policyId: varchar("policyId", { length: 40 }).notNull(),
+  title: varchar("title", { length: 180 }).notNull(),
+  domain: varchar("domain", { length: 80 }).notNull(),
+  owner: varchar("owner", { length: 80 }).notNull(),
+  version: varchar("version", { length: 24 }).notNull(),
+  reviewCycle: varchar("reviewCycle", { length: 80 }).notNull(),
+  status: mysqlEnum("status", policyStatusValues).notNull(),
+  purpose: text("purpose").notNull(),
+  operatingRules: json("operatingRules").$type<string[]>().notNull(),
+  evidenceExamples: json("evidenceExamples").$type<string[]>().notNull(),
+  provenance: mysqlEnum("provenance", provenanceValues).notNull(),
+}, (table) => [
+  index("policy_records_domain_idx").on(table.domain),
+  uniqueIndex("policy_record_identifier_unique").on(table.policyId),
 ]);
 
 export const sources = mysqlTable("sources", {

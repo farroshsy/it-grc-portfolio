@@ -1,5 +1,6 @@
 import { asc, eq } from "drizzle-orm";
 import {
+  auditRequests,
   artifactRows,
   artifacts,
   caseStudies,
@@ -8,6 +9,7 @@ import {
   controlTests,
   controls,
   jobMappings,
+  policyRecords,
   remediationActions,
   risks,
   sources,
@@ -73,4 +75,34 @@ export async function getDashboardData() {
     db.select().from(caseStudyFrameworks).orderBy(asc(caseStudyFrameworks.id)),
   ]);
   return { risks: allRisks, controls: allControls, tests: allTests, remediation: allRemediation, studies, frameworks };
+}
+
+export async function getAuditRoomData() {
+  const db = await readyDb();
+  if (!db) return null;
+  const [requests, studies] = await Promise.all([
+    db.select().from(auditRequests).orderBy(asc(auditRequests.dueDate)),
+    db.select().from(caseStudies).orderBy(asc(caseStudies.id)),
+  ]);
+  return { requests, studies };
+}
+
+export async function getPolicyPackData() {
+  const db = await readyDb();
+  if (!db) return null;
+  const policies = await db.select().from(policyRecords).orderBy(asc(policyRecords.policyId));
+  return { policies };
+}
+
+export async function getExecutiveBriefingData() {
+  const db = await readyDb();
+  if (!db) return null;
+  const [allRisks, allControls, allTests, allRemediation, requests] = await Promise.all([
+    db.select().from(risks).orderBy(asc(risks.riskId)),
+    db.select().from(controls).orderBy(asc(controls.controlId)),
+    db.select().from(controlTests).orderBy(asc(controlTests.testId)),
+    db.select().from(remediationActions).orderBy(asc(remediationActions.dueDate)),
+    db.select().from(auditRequests).orderBy(asc(auditRequests.dueDate)),
+  ]);
+  return { risks: allRisks, controls: allControls, tests: allTests, remediation: allRemediation, auditRequests: requests };
 }

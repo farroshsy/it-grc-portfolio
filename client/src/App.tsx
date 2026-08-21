@@ -6,7 +6,10 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import CaseStudy from "./pages/CaseStudy";
 import Dashboard from "./pages/Dashboard";
+import AuditRoom from "./pages/AuditRoom";
+import ExecutiveBriefing from "./pages/ExecutiveBriefing";
 import Home from "./pages/Home";
+import PolicyPack from "./pages/PolicyPack";
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -15,6 +18,9 @@ function Router() {
       <Route path={"/"} component={Home} />
       <Route path={"/case-studies/:slug"} component={CaseStudy} />
       <Route path={"/dashboard"} component={Dashboard} />
+      <Route path={"/audit-room"} component={AuditRoom} />
+      <Route path={"/policy-pack"} component={PolicyPack} />
+      <Route path={"/executive-briefing"} component={ExecutiveBriefing} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />

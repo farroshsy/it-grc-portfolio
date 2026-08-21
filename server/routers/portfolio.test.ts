@@ -4,6 +4,9 @@ const dataAccess = vi.hoisted(() => ({
   getPortfolioHomeData: vi.fn(),
   getCaseStudyDetail: vi.fn(),
   getDashboardData: vi.fn(),
+  getAuditRoomData: vi.fn(),
+  getPolicyPackData: vi.fn(),
+  getExecutiveBriefingData: vi.fn(),
 }));
 
 vi.mock("../portfolioDb", () => dataAccess);
@@ -35,5 +38,22 @@ describe("portfolioRouter", () => {
     dataAccess.getDashboardData.mockResolvedValue(expected);
     const caller = portfolioRouter.createCaller({} as never);
     await expect(caller.dashboard()).resolves.toEqual(expected);
+  });
+
+  it("returns audit-room and policy-pack records through public provenance-safe contracts", async () => {
+    const auditExpected = { requests: [{ requestId: "PBC-001", provenance: "Simulated Case Study" }], studies: [] };
+    const policyExpected = { policies: [{ policyId: "POL-ACC-01", provenance: "Simulated Case Study" }] };
+    dataAccess.getAuditRoomData.mockResolvedValue(auditExpected);
+    dataAccess.getPolicyPackData.mockResolvedValue(policyExpected);
+    const caller = portfolioRouter.createCaller({} as never);
+    await expect(caller.auditRoom()).resolves.toEqual(auditExpected);
+    await expect(caller.policyPack()).resolves.toEqual(policyExpected);
+  });
+
+  it("returns the decision-ready governance dataset for the executive briefing", async () => {
+    const expected = { risks: [], controls: [], tests: [], remediation: [], auditRequests: [] };
+    dataAccess.getExecutiveBriefingData.mockResolvedValue(expected);
+    const caller = portfolioRouter.createCaller({} as never);
+    await expect(caller.executiveBriefing()).resolves.toEqual(expected);
   });
 });
