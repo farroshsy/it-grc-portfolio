@@ -20,7 +20,7 @@
 - [x] Research and document a PCI-oriented simulated payment-security data-flow model, scope boundaries, and evidence implications.
 - [x] Add an interactive payment-security architecture and data-flow diagram to the Fintech Risk Assessment case study with clickable system and flow details.
 - [x] Add a concise interview-readiness and evidence-gap panel covering the highest-value remaining IT GRC portfolio signals.
-- [ ] Test the interactive diagram and new portfolio evidence panel, verify responsive behavior, and save a new project checkpoint.
+- [x] Test the interactive diagram and new portfolio evidence panel, verify responsive behavior, and save a new project checkpoint.
 - [x] Make individual payment-security flows independently clickable with dedicated data-category, boundary, and evidence-detail inspection.
 - [x] Add automated coverage for the payment-flow selection model.
 - [x] Add an interaction-focused component test verifying that selecting a payment flow updates its inspector details.
