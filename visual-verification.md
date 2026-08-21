@@ -15,3 +15,9 @@ Mobile verification at 375 pixels wide confirmed that the landing page retains t
 ## Final Dashboard Check
 
 The final desktop dashboard verification confirms the added Recharts framework-readiness view is displayed before the remediation ledger. Its values are derived from framework links and control-effectiveness records returned through the dashboard query. The interface explicitly frames the result as an illustrative readiness indicator rather than a certification, attestation, or legal conclusion.
+
+## Payment-Security Diagram Verification
+
+The desktop verification confirmed the interactive payment-security map is visually distinct from the assessment narrative, clearly labels the simulated CDE boundary, separates external, CDE, supporting, and design-assumption components, and displays its evidence inspector and interview-readiness panel. The narrow mobile layout preserves the map within a deliberate horizontal-scrolling viewport, paired with a visible instruction to swipe through the complete model; the system inspector stacks below the map for readable component details.
+
+The completed interaction implementation allows either a system node or a numbered flow to be selected with a pointer or keyboard. The inspector changes its label, boundary description, scoping question, control intent, and illustrative evidence list for the selected flow. Component-level coverage confirms the hosted-entry flow changes the inspector to its Merchant-to-CDE context and evidence set.

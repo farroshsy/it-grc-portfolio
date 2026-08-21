@@ -1,6 +1,6 @@
+import React, { type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { ArrowUpRight, BookOpen, LayoutDashboard, ShieldCheck } from "lucide-react";
-import type { ReactNode } from "react";
 
 export function ProvenanceBadge({ label }: { label: "Academic" | "Independent Research" | "Simulated Case Study" }) {
   return <span className="provenance-badge">{label}</span>;

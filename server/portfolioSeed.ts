@@ -287,7 +287,13 @@ const seedCases: SeedCaseStudy[] = [
       { actionId: "FRA-A01", title: "Require ticket linkage before elevated access can be closed.", linkedRiskId: "FRA-R01", owner: "Security Engineering", status: "In progress", severity: "High", dueDate: "2026-09-30" },
       { actionId: "FRA-A02", title: "Publish alert-review cadence with central evidence storage.", linkedRiskId: "FRA-R02", owner: "Platform Engineering", status: "Planned", severity: "Medium", dueDate: "2026-10-15" },
     ],
-    sources: [globalSources.pci, globalSources.nist, globalSources.cis],
+    sources: [globalSources.pci, globalSources.nist, globalSources.cis, {
+      authority: "PCI Security Standards Council",
+      publication: "PCI DSS Scoping and Segmentation Guidance for Modern Network Architectures",
+      versionDate: "Information supplement announced 9 September 2024",
+      url: "https://blog.pcisecuritystandards.org/new-information-supplement-pci-dss-scoping-and-segmentation-guidance-for-modern-network-architectures",
+      note: "Used for the simulated data-flow and scope-boundary reasoning; supplemental guidance does not replace a PCI standard.",
+    }],
   },
   {
     slug: "iso-27001-control-assessment",

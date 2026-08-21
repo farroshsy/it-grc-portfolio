@@ -10,6 +10,8 @@ This register supports **independent research** and simulated case-study content
 | PCI Security Standards Council | PCI Data Security Standard | v4.0.1, June 2024 | Simulated payment security context and evidence-oriented technical/control themes; no copyrighted requirement text reproduced | https://www.pcisecuritystandards.org/standards/pci-dss/ |
 | National Institute of Standards and Technology | The NIST Cybersecurity Framework (CSF) 2.0, NIST CSWP 29 | February 2024 | Control outcomes, risk governance, and continuous-governance framing | https://doi.org/10.6028/NIST.CSWP.29 |
 | Center for Internet Security | CIS Benchmarks | Version varies by technology; current versions verified per benchmark | Automation mini-project reference for simulated cloud configuration checks | https://www.cisecurity.org/cis-benchmarks |
+| PCI Security Standards Council | PCI DSS Scoping and Segmentation Guidance for Modern Network Architectures | Information supplement announced 9 September 2024 | Simulated payment-security data-flow, CDE boundary, cloud asset inventory, and segmentation reasoning | https://blog.pcisecuritystandards.org/new-information-supplement-pci-dss-scoping-and-segmentation-guidance-for-modern-network-architectures |
+| PCI Security Standards Council | PCI SSC Glossary | Accessed 2026 | Definitions for a data-flow diagram and the cardholder data environment; summarized, not reproduced as compliance advice | https://www.pcisecuritystandards.org/glossary/ |
 
 ## Use Boundary
 

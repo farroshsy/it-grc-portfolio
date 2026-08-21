@@ -1,6 +1,7 @@
 import { ArrowLeft, Braces, Copy, FileSearch, Loader2 } from "lucide-react";
 import { Link, useRoute } from "wouter";
 import ArtifactViewer from "@/components/ArtifactViewer";
+import PaymentSecurityDiagram, { PciInterviewReadiness } from "@/components/PaymentSecurityDiagram";
 import { FrameworkTags, ProvenanceBadge, SiteShell } from "@/components/PortfolioChrome";
 import SourcesPanel from "@/components/SourcesPanel";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ export default function CaseStudy() {
   const artifacts = data.artifacts as PortfolioArtifact[];
   const caseSources = data.sources as PortfolioSource[];
   const showCode = Boolean(study.code && study.codeLanguage);
+  const isPaymentSecurityCase = study.slug === "fintech-risk-assessment";
 
   async function copyCode() {
     if (study.code) await navigator.clipboard.writeText(study.code);
@@ -52,6 +54,7 @@ export default function CaseStudy() {
             </article>
           ))}
         </section>
+        {isPaymentSecurityCase && <><PaymentSecurityDiagram /><PciInterviewReadiness /></>}
         {showCode && <section className="code-panel" aria-labelledby="automation-code-heading">
           <div className="code-panel-heading"><div><span className="eyebrow"><Braces size={13} /> Runnable {study.codeLanguage} code</span><h2 id="automation-code-heading">Evidence collection, not a substitute for review</h2><p>Run only with authorized cloud credentials. The script is shown for independent-research demonstration and is not executed by this website.</p></div><Button variant="outline" onClick={copyCode}><Copy size={15} /> Copy script</Button></div>
           <pre><code>{study.code}</code></pre>
