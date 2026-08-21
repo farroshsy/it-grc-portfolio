@@ -91,3 +91,9 @@
 - [x] Make the operational compliance dashboard and FlowGuard trace-verification data contracts protected and surface resolved workspace roles with role-specific next actions.
 - [x] Integrate a named FlowGuard payment-completion verifier adapter derived from the supplied handoff model, preserving trace ID, evidence hash, verdict, finding, and provenance export semantics.
 - [x] Add RBAC, protected attachment-index, FlowGuard verifier, dashboard contract, evidence-file UI, desktop, and mobile validation coverage for the expanded GRC product.
+- [x] Define the administrator role-assignment model, evidence-retention policy behavior, and optional FlowGuard live trace-export ingestion boundary.
+- [x] Build an administrator role-assignment screen and protected server procedures for active workspace-role management.
+- [x] Implement evidence-attachment retention dates, expiry status, controlled retrieval guards, and a lifecycle management view.
+- [x] Add an optional FlowGuard trace-export ingestion route that validates and evaluates uploaded trace JSON against the payment-control contract without requiring a live external connector.
+- [x] Test role administration, evidence-retention lifecycle enforcement, and trace-ingestion results; verify responsive behavior and save a checkpoint.
+- [x] Save a validated checkpoint covering the administrator role-assignment console, evidence-retention lifecycle, and FlowGuard trace-export ingestion.

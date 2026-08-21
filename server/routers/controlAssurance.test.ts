@@ -8,6 +8,10 @@ const operations = vi.hoisted(() => ({
   attachEvidenceFile: vi.fn(),
   listEvidenceAttachments: vi.fn(),
   listWorkspaceEvidenceAttachments: vi.fn(),
+  getAdministrationData: vi.fn(),
+  assignWorkspaceRole: vi.fn(),
+  setEvidenceAttachmentRetention: vi.fn(),
+  ingestFlowGuardPaymentTrace: vi.fn(),
   setEvidenceReview: vi.fn(),
   recordTestDecision: vi.fn(),
   setFindingTreatment: vi.fn(),
@@ -82,6 +86,27 @@ describe("controlAssuranceRouter", () => {
     await expect(restrictedCaller.evidenceAttachmentIndex()).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(restrictedCaller.recordTestDecision({ submissionId: "EVD-001", result: "Effective", conclusion: "Illustrative role-enforcement test conclusion." })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(restrictedCaller.proposeRiskAcceptance({ findingId: "FND-001", rationale: "Illustrative role-enforcement residual-risk rationale.", expiresAt: new Date("2026-10-01") })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(restrictedCaller.ingestPaymentTrace({ sourceName: "test.json", rawTrace: '{"spans":[{"traceId":"t1","spanId":"s1"}]}' })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(restrictedCaller.administration()).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("limits role assignment and evidence-retention configuration to the platform administrator", async () => {
+    operations.getAdministrationData.mockResolvedValue({ users: [{ id: 2, name: "Control Owner" }], roleAssignments: [], attachments: [{ attachmentId: "ATT-001", retentionStatus: "Active" }] });
+    operations.assignWorkspaceRole.mockResolvedValue({ success: true });
+    operations.setEvidenceAttachmentRetention.mockResolvedValue({ success: true });
+    const caller = controlAssuranceRouter.createCaller(authenticatedContext);
+    await expect(caller.administration()).resolves.toMatchObject({ users: [{ id: 2 }] });
+    await expect(caller.assignWorkspaceRole({ userId: 2, workspaceRole: "control_owner", active: true })).resolves.toEqual({ success: true });
+    await expect(caller.setAttachmentRetention({ attachmentId: "ATT-001", retentionUntil: new Date("2027-08-21"), retentionStatus: "Legal hold", retentionNote: "Open audit request" })).resolves.toEqual({ success: true });
+    expect(operations.assignWorkspaceRole).toHaveBeenCalledWith({ userId: 2, workspaceRole: "control_owner", active: true, assignedBy: "Portfolio Owner" });
+    expect(operations.setEvidenceAttachmentRetention).toHaveBeenCalledWith(expect.objectContaining({ attachmentId: "ATT-001", retentionStatus: "Legal hold" }));
+  });
+
+  it("accepts a trace export only through an authenticated GRC analyst workflow", async () => {
+    operations.ingestFlowGuardPaymentTrace.mockResolvedValue({ executionId: "FGX-900001", importId: "FGI-900001", verdict: "PASS", rawTraceStored: false });
+    const caller = controlAssuranceRouter.createCaller(authenticatedContext);
+    await expect(caller.ingestPaymentTrace({ sourceName: "payment-export.json", rawTrace: '{"spans":[{"traceId":"trace-1","spanId":"span-1","service":"orderservice","operation":"CreateOrder","status":"ok"}]}' })).resolves.toMatchObject({ executionId: "FGX-900001", rawTraceStored: false });
+    expect(operations.ingestFlowGuardPaymentTrace).toHaveBeenCalledWith(expect.objectContaining({ sourceName: "payment-export.json", ingestedBy: "Portfolio Owner" }));
   });
 
   it("routes analyst treatment decisions and offline issue preparation through validated procedures", async () => {

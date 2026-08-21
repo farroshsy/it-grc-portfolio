@@ -1,6 +1,6 @@
 import React, { type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
-import { Activity, ArrowUpRight, Award, BookOpen, ClipboardCheck, Database, FileText, LayoutDashboard, Presentation, ShieldCheck } from "lucide-react";
+import { Activity, ArrowUpRight, Award, BookOpen, ClipboardCheck, Database, FileText, LayoutDashboard, Presentation, Settings2, ShieldCheck } from "lucide-react";
 
 export function ProvenanceBadge({ label }: { label: "Academic" | "Independent Research" | "Simulated Case Study" }) {
   return <span className="provenance-badge">{label}</span>;
@@ -19,6 +19,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
   const nav = [
     { href: "/", label: "Portfolio", icon: BookOpen },
     { href: "/workspace", label: "Workspace", icon: Database },
+    { href: "/administration", label: "Admin", icon: Settings2 },
     { href: "/compliance-dashboard", label: "Compliance", icon: LayoutDashboard },
     { href: "/technical-verification", label: "Trace verify", icon: Activity },
     { href: "/dashboard", label: "Governance view", icon: LayoutDashboard },

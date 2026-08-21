@@ -7,16 +7,20 @@ import {
   flowguardControlContracts,
   flowguardControlExecutions,
   flowguardExceptions,
+  flowguardTraceImports,
   githubRemediationLinks,
   grcFindings,
   grcSystems,
+  grcUserRoles,
   riskAcceptances,
+  users,
 } from "../drizzle/schema";
 import { getDb } from "./db";
 import { ensureControlAssuranceSeeded } from "./controlAssuranceSeed";
 import { controlStatusForTestDecision, effectiveRiskAcceptanceStatus, evidenceStatusForTestDecision, findingStatusForExternalState, findingStatusForRiskDecision, findingStatusForTreatment } from "../shared/controlAssuranceLifecycle";
 import { createExternalRemediation, refreshExternalRemediation, type RemediationProvider } from "./remediationProvider";
 import { storagePut } from "./storage";
+import { evaluatePaymentTraceExport, parseFlowGuardTraceExport } from "./flowguardTraceIngestion";
 
 async function readyDb() {
   const db = await getDb();
@@ -65,12 +69,13 @@ export async function getComplianceDashboardData() {
 export async function getFlowguardVerificationData() {
   const db = await readyDb();
   if (!db) return null;
-  const [contracts, executions, technicalExceptions] = await Promise.all([
+  const [contracts, executions, technicalExceptions, traceImports] = await Promise.all([
     db.select().from(flowguardControlContracts).orderBy(asc(flowguardControlContracts.controlKey)),
     db.select().from(flowguardControlExecutions).orderBy(desc(flowguardControlExecutions.occurredAt)),
     db.select().from(flowguardExceptions).orderBy(asc(flowguardExceptions.dueDate)),
+    db.select().from(flowguardTraceImports).orderBy(desc(flowguardTraceImports.ingestedAt)),
   ]);
-  return { contracts, executions, technicalExceptions };
+  return { contracts, executions, technicalExceptions, traceImports };
 }
 
 export async function submitEvidence(input: { controlId: string; evidenceSummary: string; submittedBy: string }) {
@@ -103,20 +108,86 @@ export async function attachEvidenceFile(input: { submissionId: string; fileName
   const safeFileName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120) || "evidence.bin";
   const attachmentId = `ATT-${Date.now().toString().slice(-6)}`;
   const uploaded = await storagePut(`grc-evidence/${submission.controlId}/${input.submissionId}/${safeFileName}`, fileData, input.contentType);
-  await db.insert(evidenceAttachments).values({ attachmentId, submissionId: input.submissionId, fileName: safeFileName, contentType: input.contentType, byteSize: fileData.byteLength, storageKey: uploaded.key, storageUrl: uploaded.url, uploadedBy: input.uploadedBy, uploadedAt: new Date(), provenance: "Simulated Case Study" });
+  const uploadedAt = new Date();
+  const retentionUntil = new Date(uploadedAt);
+  retentionUntil.setUTCFullYear(retentionUntil.getUTCFullYear() + 1);
+  await db.insert(evidenceAttachments).values({ attachmentId, submissionId: input.submissionId, fileName: safeFileName, contentType: input.contentType, byteSize: fileData.byteLength, storageKey: uploaded.key, storageUrl: uploaded.url, uploadedBy: input.uploadedBy, uploadedAt, retentionUntil, retentionStatus: "Active", retentionNote: "Default 365-day portfolio evidence-retention policy.", provenance: "Simulated Case Study" });
   return { attachmentId, fileName: safeFileName, contentType: input.contentType, byteSize: fileData.byteLength, url: uploaded.url };
+}
+
+type AttachmentRow = typeof evidenceAttachments.$inferSelect;
+
+export function resolveEvidenceAttachmentLifecycle<T extends Pick<AttachmentRow, "retentionStatus" | "retentionUntil" | "expiredAt" | "storageUrl">>(attachment: T, now = new Date()) {
+  const retentionStatus = attachment.retentionStatus === "Legal hold" ? "Legal hold" : attachment.retentionUntil <= now ? "Expired" : "Active";
+  const expiredAt = retentionStatus === "Expired" ? (attachment.expiredAt ?? now) : attachment.expiredAt;
+  return { ...attachment, retentionStatus, expiredAt, storageUrl: retentionStatus === "Expired" ? null : attachment.storageUrl };
+}
+
+async function resolveAttachmentRetention(rows: AttachmentRow[]) {
+  const db = await readyDb();
+  if (!db) throw new Error("The control-assurance datastore is unavailable.");
+  const now = new Date();
+  return Promise.all(rows.map(async (attachment) => {
+    const resolved = resolveEvidenceAttachmentLifecycle(attachment, now);
+    if (resolved.retentionStatus !== attachment.retentionStatus) await db.update(evidenceAttachments).set({ retentionStatus: resolved.retentionStatus, expiredAt: resolved.retentionStatus === "Expired" ? now : null }).where(eq(evidenceAttachments.attachmentId, attachment.attachmentId));
+    return resolved;
+  }));
 }
 
 export async function listEvidenceAttachments(submissionId: string) {
   const db = await readyDb();
   if (!db) throw new Error("The control-assurance datastore is unavailable.");
-  return db.select().from(evidenceAttachments).where(eq(evidenceAttachments.submissionId, submissionId)).orderBy(desc(evidenceAttachments.uploadedAt));
+  return resolveAttachmentRetention(await db.select().from(evidenceAttachments).where(eq(evidenceAttachments.submissionId, submissionId)).orderBy(desc(evidenceAttachments.uploadedAt)));
 }
 
 export async function listWorkspaceEvidenceAttachments() {
   const db = await readyDb();
   if (!db) throw new Error("The control-assurance datastore is unavailable.");
-  return db.select().from(evidenceAttachments).orderBy(desc(evidenceAttachments.uploadedAt));
+  return resolveAttachmentRetention(await db.select().from(evidenceAttachments).orderBy(desc(evidenceAttachments.uploadedAt)));
+}
+
+export async function setEvidenceAttachmentRetention(input: { attachmentId: string; retentionUntil: Date; retentionStatus: "Active" | "Legal hold"; retentionNote: string | null }) {
+  const db = await readyDb();
+  if (!db) throw new Error("The control-assurance datastore is unavailable.");
+  await db.update(evidenceAttachments).set({ retentionUntil: input.retentionUntil, retentionStatus: input.retentionStatus, retentionNote: input.retentionNote, expiredAt: null }).where(eq(evidenceAttachments.attachmentId, input.attachmentId));
+  return { success: true as const };
+}
+
+export async function getAdministrationData() {
+  const db = await readyDb();
+  if (!db) throw new Error("The control-assurance datastore is unavailable.");
+  const [workspaceUsers, roleAssignments, attachments] = await Promise.all([
+    db.select().from(users).orderBy(asc(users.name)),
+    db.select().from(grcUserRoles).orderBy(asc(grcUserRoles.userId)),
+    db.select().from(evidenceAttachments).orderBy(asc(evidenceAttachments.retentionUntil)),
+  ]);
+  return { users: workspaceUsers, roleAssignments, attachments: await resolveAttachmentRetention(attachments) };
+}
+
+export async function assignWorkspaceRole(input: { userId: number; workspaceRole: "control_owner" | "grc_analyst" | "risk_approver"; active: boolean; assignedBy: string }) {
+  const db = await readyDb();
+  if (!db) throw new Error("The control-assurance datastore is unavailable.");
+  await db.insert(grcUserRoles).values({ ...input }).onDuplicateKeyUpdate({ set: { active: input.active, assignedBy: input.assignedBy } });
+  return { success: true as const };
+}
+
+export async function ingestFlowGuardPaymentTrace(input: { rawTrace: string; sourceName: string; ingestedBy: string }) {
+  const db = await readyDb();
+  if (!db) throw new Error("The control-assurance datastore is unavailable.");
+  const imported = parseFlowGuardTraceExport(input.rawTrace, input.sourceName);
+  const evaluation = evaluatePaymentTraceExport(imported);
+  const suffix = Date.now().toString().slice(-6);
+  const executionId = `FGX-${suffix}`;
+  const importId = `FGI-${suffix}`;
+  await db.insert(flowguardControlExecutions).values({ executionId, contractId: "FGC-001", controlKey: "CTRL-PAY-001", mappedControlId: "CAA-PAY-01", verdict: evaluation.verdict, traceId: evaluation.traceId, evidenceHash: evaluation.evidenceHash, firstFinding: evaluation.firstFinding?.detail ?? null, occurredAt: evaluation.occurredAt, provenanceSource: `Imported trace export: ${evaluation.sourceName}`, biOjkEvidenceReference: "Technical evidence cross-reference only", iso27001EvidenceReference: "ISMS operating-effectiveness cross-reference only", mappingInterpretationNote: "Imported trace evidence is evaluated deterministically; it does not determine regulatory applicability or assert certification.", provenance: "Independent Research" });
+  await db.insert(flowguardTraceImports).values({ importId, executionId, sourceName: evaluation.sourceName, sourceShape: evaluation.sourceShape, spanCount: evaluation.spanCount, traceId: evaluation.traceId, ingestedBy: input.ingestedBy, ingestedAt: new Date(), rawTraceStored: false, provenance: "Independent Research" });
+  let exceptionId: string | null = null;
+  if (evaluation.verdict !== "PASS") {
+    exceptionId = `FG-EXC-${suffix}`;
+    const dueDate = new Date(); dueDate.setUTCDate(dueDate.getUTCDate() + 30);
+    await db.insert(flowguardExceptions).values({ exceptionId, executionId, linkedFindingId: null, title: `Imported trace verification: ${evaluation.firstFinding?.label ?? "inconclusive evidence"}`, owner: "Platform Engineering", dueDate, remediation: "Review the imported trace finding, correct the technical control path, and submit a new trace export for retest.", retestStatus: "Retest required", status: "Open", provenance: "Independent Research" });
+  }
+  return { executionId, importId, exceptionId, verdict: evaluation.verdict, traceId: evaluation.traceId, evidenceHash: evaluation.evidenceHash, rawTraceStored: false as const };
 }
 
 export async function setEvidenceReview(input: { submissionId: string; status: "Accepted" | "Rejected"; reviewNote: string; reviewedBy: string }) {

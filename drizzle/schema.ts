@@ -14,6 +14,7 @@ export const riskAcceptanceStatusValues = ["Proposed", "Approved", "Rejected", "
 export const remediationSyncStatusValues = ["Not connected", "Ready to create", "Synced open", "Synced closed", "Retest required"] as const;
 export const grcWorkspaceRoleValues = ["control_owner", "grc_analyst", "risk_approver"] as const;
 export const technicalVerdictValues = ["PASS", "FAIL", "INCONCLUSIVE"] as const;
+export const evidenceRetentionStatusValues = ["Active", "Expired", "Legal hold"] as const;
 
 /** Core user table backing the preconfigured authentication flow. */
 export const users = mysqlTable("users", {
@@ -244,9 +245,14 @@ export const evidenceAttachments = mysqlTable("evidence_attachments", {
   storageUrl: text("storageUrl").notNull(),
   uploadedBy: varchar("uploadedBy", { length: 80 }).notNull(),
   uploadedAt: timestamp("uploadedAt").notNull(),
+  retentionUntil: timestamp("retentionUntil").notNull(),
+  retentionStatus: mysqlEnum("retentionStatus", evidenceRetentionStatusValues).default("Active").notNull(),
+  expiredAt: timestamp("expiredAt"),
+  retentionNote: text("retentionNote"),
   provenance: mysqlEnum("provenance", provenanceValues).notNull(),
 }, (table) => [
   index("evidence_attachments_submission_idx").on(table.submissionId),
+  index("evidence_attachments_retention_idx").on(table.retentionUntil, table.retentionStatus),
   uniqueIndex("evidence_attachment_identifier_unique").on(table.attachmentId),
 ]);
 
@@ -361,6 +367,25 @@ export const flowguardExceptions = mysqlTable("flowguard_exceptions", {
 }, (table) => [
   uniqueIndex("flowguard_exception_identifier_unique").on(table.exceptionId),
   index("flowguard_exception_execution_idx").on(table.executionId),
+]);
+
+/** Persists audit metadata only; raw trace-export payloads are evaluated transiently and are never stored. */
+export const flowguardTraceImports = mysqlTable("flowguard_trace_imports", {
+  id: int("id").autoincrement().primaryKey(),
+  importId: varchar("importId", { length: 40 }).notNull(),
+  executionId: varchar("executionId", { length: 40 }).notNull(),
+  sourceName: varchar("sourceName", { length: 160 }).notNull(),
+  sourceShape: varchar("sourceShape", { length: 32 }).notNull(),
+  spanCount: int("spanCount").notNull(),
+  traceId: varchar("traceId", { length: 160 }).notNull(),
+  ingestedBy: varchar("ingestedBy", { length: 80 }).notNull(),
+  ingestedAt: timestamp("ingestedAt").notNull(),
+  rawTraceStored: boolean("rawTraceStored").default(false).notNull(),
+  provenance: mysqlEnum("provenance", provenanceValues).notNull(),
+}, (table) => [
+  uniqueIndex("flowguard_trace_import_identifier_unique").on(table.importId),
+  uniqueIndex("flowguard_trace_import_execution_unique").on(table.executionId),
+  index("flowguard_trace_imported_at_idx").on(table.ingestedAt),
 ]);
 
 export const sources = mysqlTable("sources", {

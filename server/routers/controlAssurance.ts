@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { attachEvidenceFile, decideRiskAcceptance, getComplianceDashboardData, getControlAssuranceHubData, getFlowguardVerificationData, getRemediationExportPayload, importRemediationSnapshot, listEvidenceAttachments, listWorkspaceEvidenceAttachments, markReadyForGithubIssue, proposeRiskAcceptance, recordTestDecision, setEvidenceReview, setFindingTreatment, submitEvidence, syncRemediationStatus } from "../controlAssuranceDb";
-import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
+import { assignWorkspaceRole, attachEvidenceFile, decideRiskAcceptance, getAdministrationData, getComplianceDashboardData, getControlAssuranceHubData, getFlowguardVerificationData, getRemediationExportPayload, importRemediationSnapshot, ingestFlowGuardPaymentTrace, listEvidenceAttachments, listWorkspaceEvidenceAttachments, markReadyForGithubIssue, proposeRiskAcceptance, recordTestDecision, setEvidenceAttachmentRetention, setEvidenceReview, setFindingTreatment, submitEvidence, syncRemediationStatus } from "../controlAssuranceDb";
+import { adminProcedure, protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { canPerformWorkspaceAction, getWorkspaceRoles, type WorkspaceRole } from "../grcAccess";
 
 async function assertWorkspaceRole(user: Parameters<typeof getWorkspaceRoles>[0], allowed: WorkspaceRole[]) {
@@ -29,6 +29,13 @@ export const controlAssuranceRouter = router({
     return { ...data, roles };
   }),
   myAccess: protectedProcedure.query(async ({ ctx }) => ({ roles: await getWorkspaceRoles(ctx.user), isAdministrator: ctx.user.role === "admin" })),
+  administration: adminProcedure.query(async () => {
+    const data = await getAdministrationData();
+    if (!data) throw new Error("The administration datastore is unavailable.");
+    return data;
+  }),
+  assignWorkspaceRole: adminProcedure.input(z.object({ userId: z.number().int().positive(), workspaceRole: z.enum(["control_owner", "grc_analyst", "risk_approver"]), active: z.boolean() })).mutation(async ({ input, ctx }) => assignWorkspaceRole({ ...input, assignedBy: ctx.user.name || "Workspace administrator" })),
+  setAttachmentRetention: adminProcedure.input(z.object({ attachmentId: z.string().min(1).max(40), retentionUntil: z.coerce.date(), retentionStatus: z.enum(["Active", "Legal hold"]), retentionNote: z.string().max(500).nullable() })).mutation(async ({ input }) => setEvidenceAttachmentRetention(input)),
   submitEvidence: protectedProcedure.input(z.object({ controlId: z.string().min(1).max(40), evidenceSummary: z.string().min(12).max(2000) })).mutation(async ({ input, ctx }) => {
     await assertWorkspaceRole(ctx.user, ["control_owner"]);
     return submitEvidence({ ...input, submittedBy: ctx.user.name || "Authenticated control owner" });
@@ -67,6 +74,7 @@ export const controlAssuranceRouter = router({
   }),
   prepareGithubIssue: protectedProcedure.input(z.object({ findingId: z.string().min(1).max(40) })).mutation(async ({ input, ctx }) => { await assertWorkspaceRole(ctx.user, ["grc_analyst"]); return markReadyForGithubIssue(input.findingId); }),
   syncRemediation: protectedProcedure.input(z.object({ findingId: z.string().min(1).max(40) })).mutation(async ({ input, ctx }) => { await assertWorkspaceRole(ctx.user, ["grc_analyst"]); return syncRemediationStatus(input.findingId); }),
+  ingestPaymentTrace: protectedProcedure.input(z.object({ sourceName: z.string().min(3).max(160), rawTrace: z.string().min(20).max(1_000_000) })).mutation(async ({ input, ctx }) => { await assertWorkspaceRole(ctx.user, ["grc_analyst"]); return ingestFlowGuardPaymentTrace({ ...input, ingestedBy: ctx.user.name || "Authenticated GRC analyst" }); }),
   remediationExport: publicProcedure.input(z.object({ findingId: z.string().min(1).max(40) })).query(async ({ input }) => getRemediationExportPayload(input.findingId)),
   importRemediationSnapshot: protectedProcedure.input(z.object({ findingId: z.string().min(1).max(40), provider: z.literal("GitHub Issues"), externalIssueNumber: z.number().int().positive(), externalIssueUrl: z.string().url(), externalState: z.enum(["open", "closed"]), observedAt: z.coerce.date(), provenance: z.literal("Simulated Case Study") })).mutation(async ({ input, ctx }) => { await assertWorkspaceRole(ctx.user, ["grc_analyst"]); return importRemediationSnapshot(input); }),
 });
