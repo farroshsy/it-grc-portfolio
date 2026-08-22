@@ -341,6 +341,33 @@ export const retentionReviewNotifications = mysqlTable("retention_review_notific
   index("retention_review_notification_recipient_idx").on(table.recipientUserId, table.readAt, table.createdAt),
 ]);
 
+/** Per-administrator delivery preferences; credentials and recipient addresses are not stored in this operational table. */
+export const retentionReviewNotificationPreferences = mysqlTable("retention_review_notification_preferences", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  inAppEnabled: boolean("inAppEnabled").default(true).notNull(),
+  emailEnabled: boolean("emailEnabled").default(false).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  uniqueIndex("retention_review_notification_preference_user_unique").on(table.userId),
+]);
+
+/** Personal administrator shortcuts for frequently used audit-log filters. */
+export const grcSavedAuditViews = mysqlTable("grc_saved_audit_views", {
+  id: int("id").autoincrement().primaryKey(),
+  viewId: varchar("viewId", { length: 48 }).notNull(),
+  ownerUserId: int("ownerUserId").notNull(),
+  title: varchar("title", { length: 100 }).notNull(),
+  workspaceRole: varchar("workspaceRole", { length: 40 }),
+  assignedBy: varchar("assignedBy", { length: 80 }),
+  createdAt: timestamp("createdAt").notNull(),
+  lastUsedAt: timestamp("lastUsedAt"),
+}, (table) => [
+  uniqueIndex("grc_saved_audit_view_identifier_unique").on(table.viewId),
+  uniqueIndex("grc_saved_audit_view_owner_title_unique").on(table.ownerUserId, table.title),
+  index("grc_saved_audit_view_owner_idx").on(table.ownerUserId, table.createdAt),
+]);
+
 export const assuranceTests = mysqlTable("assurance_tests", {
   id: int("id").autoincrement().primaryKey(),
   assuranceTestId: varchar("assuranceTestId", { length: 40 }).notNull(),

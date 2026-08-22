@@ -14,12 +14,14 @@ import {
   githubRemediationLinks,
   grcFindings,
   grcRoleAssignmentEvents,
+  grcSavedAuditViews,
   grcSystems,
   grcUserRoles,
   riskAcceptances,
   retentionReviewRuns,
   retentionReviewSchedules,
   retentionReviewNotifications,
+  retentionReviewNotificationPreferences,
   users,
 } from "../drizzle/schema";
 import { getDb } from "./db";
@@ -291,12 +293,20 @@ export async function runRetentionReviewByTaskUid(taskUid: string) {
   const overdueAttachmentCount = attachments.filter((attachment) => attachment.retentionStatus === "Expired").length;
   await db.insert(retentionReviewRuns).values({ runId, scheduleId: schedule.scheduleId, executedAt: now, dueAttachmentCount, overdueAttachmentCount, status: "Completed" });
   const administrators = await db.select({ id: users.id }).from(users).where(eq(users.role, "admin"));
-  await Promise.all(administrators.flatMap((administrator) => [
-    db.insert(retentionReviewNotifications).values({ notificationId: `RRN-${runId}-${administrator.id}-APP`, runId, recipientUserId: administrator.id, channel: "in_app", status: "Unread", dueAttachmentCount, overdueAttachmentCount, createdAt: now, readAt: null }).onDuplicateKeyUpdate({ set: { status: "Unread" } }),
-    db.insert(retentionReviewNotifications).values({ notificationId: `RRN-${runId}-${administrator.id}-EMAIL`, runId, recipientUserId: administrator.id, channel: "email", status: "Awaiting Google OAuth", dueAttachmentCount, overdueAttachmentCount, createdAt: now, readAt: null }).onDuplicateKeyUpdate({ set: { status: "Awaiting Google OAuth" } }),
-  ]));
+  const preferences = await db.select().from(retentionReviewNotificationPreferences);
+  const preferencesByUserId = new Map(preferences.map((preference) => [preference.userId, preference]));
+  const deliveries = administrators.flatMap((administrator) => {
+    const preference = preferencesByUserId.get(administrator.id);
+    const inAppEnabled = preference?.inAppEnabled ?? true;
+    const emailEnabled = preference?.emailEnabled ?? false;
+    return [
+      ...(inAppEnabled ? [db.insert(retentionReviewNotifications).values({ notificationId: `RRN-${runId}-${administrator.id}-APP`, runId, recipientUserId: administrator.id, channel: "in_app", status: "Unread", dueAttachmentCount, overdueAttachmentCount, createdAt: now, readAt: null }).onDuplicateKeyUpdate({ set: { status: "Unread" } })] : []),
+      ...(emailEnabled ? [db.insert(retentionReviewNotifications).values({ notificationId: `RRN-${runId}-${administrator.id}-EMAIL`, runId, recipientUserId: administrator.id, channel: "email", status: "Awaiting Google OAuth", dueAttachmentCount, overdueAttachmentCount, createdAt: now, readAt: null }).onDuplicateKeyUpdate({ set: { status: "Awaiting Google OAuth" } })] : []),
+    ];
+  });
+  await Promise.all(deliveries);
   await db.update(retentionReviewSchedules).set({ lastRunAt: now, lastRunReminderCount: dueAttachmentCount, updatedAt: now }).where(eq(retentionReviewSchedules.scheduleId, schedule.scheduleId));
-  return { ok: true as const, runId, dueAttachmentCount, overdueAttachmentCount, notifiedAdministrators: administrators.length };
+  return { ok: true as const, runId, dueAttachmentCount, overdueAttachmentCount, notifiedAdministrators: administrators.length, inAppRecipientCount: administrators.filter((administrator) => preferencesByUserId.get(administrator.id)?.inAppEnabled ?? true).length };
 }
 
 export async function getRetentionReviewNotificationInbox(userId: number) {
@@ -309,6 +319,50 @@ export async function markRetentionReviewNotificationRead(input: { notificationI
   const db = await readyDb();
   if (!db) throw new Error("The control-assurance datastore is unavailable.");
   await db.update(retentionReviewNotifications).set({ status: "Read", readAt: new Date() }).where(and(eq(retentionReviewNotifications.notificationId, input.notificationId), eq(retentionReviewNotifications.recipientUserId, input.userId), eq(retentionReviewNotifications.channel, "in_app")));
+  return { success: true as const };
+}
+
+export async function getRetentionReviewNotificationPreferences(userId: number) {
+  const db = await readyDb();
+  if (!db) throw new Error("The control-assurance datastore is unavailable.");
+  const [preference] = await db.select().from(retentionReviewNotificationPreferences).where(eq(retentionReviewNotificationPreferences.userId, userId)).limit(1);
+  return preference ?? { userId, inAppEnabled: true, emailEnabled: false, updatedAt: null };
+}
+
+export async function saveRetentionReviewNotificationPreferences(input: { userId: number; inAppEnabled: boolean; emailEnabled: boolean }) {
+  const db = await readyDb();
+  if (!db) throw new Error("The control-assurance datastore is unavailable.");
+  const values = { ...input, updatedAt: new Date() };
+  await db.insert(retentionReviewNotificationPreferences).values(values).onDuplicateKeyUpdate({ set: { inAppEnabled: values.inAppEnabled, emailEnabled: values.emailEnabled, updatedAt: values.updatedAt } });
+  return values;
+}
+
+export async function listSavedAuditViews(ownerUserId: number) {
+  const db = await readyDb();
+  if (!db) throw new Error("The control-assurance datastore is unavailable.");
+  return db.select().from(grcSavedAuditViews).where(eq(grcSavedAuditViews.ownerUserId, ownerUserId)).orderBy(asc(grcSavedAuditViews.title));
+}
+
+export async function createSavedAuditView(input: { ownerUserId: number; title: string; workspaceRole?: "control_owner" | "grc_analyst" | "risk_approver"; assignedBy?: string }) {
+  const db = await readyDb();
+  if (!db) throw new Error("The control-assurance datastore is unavailable.");
+  const now = new Date();
+  const values = { viewId: `SAV-${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`, ownerUserId: input.ownerUserId, title: input.title.trim(), workspaceRole: input.workspaceRole ?? null, assignedBy: input.assignedBy?.trim() || null, createdAt: now, lastUsedAt: null };
+  await db.insert(grcSavedAuditViews).values(values);
+  return values;
+}
+
+export async function markSavedAuditViewUsed(input: { ownerUserId: number; viewId: string }) {
+  const db = await readyDb();
+  if (!db) throw new Error("The control-assurance datastore is unavailable.");
+  await db.update(grcSavedAuditViews).set({ lastUsedAt: new Date() }).where(and(eq(grcSavedAuditViews.viewId, input.viewId), eq(grcSavedAuditViews.ownerUserId, input.ownerUserId)));
+  return { success: true as const };
+}
+
+export async function deleteSavedAuditView(input: { ownerUserId: number; viewId: string }) {
+  const db = await readyDb();
+  if (!db) throw new Error("The control-assurance datastore is unavailable.");
+  await db.delete(grcSavedAuditViews).where(and(eq(grcSavedAuditViews.viewId, input.viewId), eq(grcSavedAuditViews.ownerUserId, input.ownerUserId)));
   return { success: true as const };
 }
 

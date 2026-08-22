@@ -17,6 +17,12 @@ const operations = vi.hoisted(() => ({
   getRetentionReviewDashboard: vi.fn(),
   getRetentionReviewNotificationInbox: vi.fn(),
   markRetentionReviewNotificationRead: vi.fn(),
+  getRetentionReviewNotificationPreferences: vi.fn(),
+  saveRetentionReviewNotificationPreferences: vi.fn(),
+  listSavedAuditViews: vi.fn(),
+  createSavedAuditView: vi.fn(),
+  markSavedAuditViewUsed: vi.fn(),
+  deleteSavedAuditView: vi.fn(),
   getRoleAssignmentAuditPage: vi.fn(),
   getRoleAssignmentAuditExport: vi.fn(),
   saveRetentionReviewSchedule: vi.fn(),
@@ -98,6 +104,12 @@ describe("controlAssuranceRouter", () => {
     await expect(restrictedCaller.proposeRiskAcceptance({ findingId: "FND-001", rationale: "Illustrative role-enforcement residual-risk rationale.", expiresAt: new Date("2026-10-01") })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(restrictedCaller.ingestPaymentTrace({ sourceName: "test.json", rawTrace: '{"spans":[{"traceId":"t1","spanId":"s1"}]}' })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(restrictedCaller.administration()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(restrictedCaller.retentionReviewNotificationPreferences()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(restrictedCaller.saveRetentionReviewNotificationPreferences({ inAppEnabled: true, emailEnabled: false })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(restrictedCaller.savedAuditViews()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(restrictedCaller.createSavedAuditView({ title: "Restricted view" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(restrictedCaller.markSavedAuditViewUsed({ viewId: "SAV-001" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(restrictedCaller.deleteSavedAuditView({ viewId: "SAV-001" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("limits role assignment and evidence-retention configuration to the platform administrator", async () => {
@@ -111,6 +123,12 @@ describe("controlAssuranceRouter", () => {
     operations.getRetentionReviewDashboard.mockResolvedValue({ schedule: { scheduleId: "RRS-001", active: false, cronExpression: "0 0 9 * * 1", thresholdDays: 30 }, runs: [], dueAttachments: [], dueCount: 0, overdueCount: 0 });
     operations.getRetentionReviewNotificationInbox.mockResolvedValue([{ notificationId: "RRN-001", status: "Unread" }]);
     operations.markRetentionReviewNotificationRead.mockResolvedValue({ success: true });
+    operations.getRetentionReviewNotificationPreferences.mockResolvedValue({ userId: 1, inAppEnabled: true, emailEnabled: false });
+    operations.saveRetentionReviewNotificationPreferences.mockResolvedValue({ userId: 1, inAppEnabled: true, emailEnabled: true });
+    operations.listSavedAuditViews.mockResolvedValue([{ viewId: "SAV-001", title: "Analyst updates" }]);
+    operations.createSavedAuditView.mockResolvedValue({ viewId: "SAV-002", title: "Owner actions" });
+    operations.markSavedAuditViewUsed.mockResolvedValue({ success: true });
+    operations.deleteSavedAuditView.mockResolvedValue({ success: true });
     operations.getRoleAssignmentAuditPage.mockResolvedValue({ items: [{ eventId: "RAE-001", workspaceRole: "grc_analyst", assignedBy: "Portfolio Owner" }], page: 1, pageSize: 12, total: 1 });
     operations.getRoleAssignmentAuditExport.mockResolvedValue([{ eventId: "RAE-001" }]);
     operations.saveRetentionReviewSchedule.mockResolvedValue({ scheduleId: "RRS-001", active: false, cronExpression: "0 0 9 * * 1", thresholdDays: 30 });
@@ -125,6 +143,12 @@ describe("controlAssuranceRouter", () => {
     await expect(caller.retentionReviewDashboard()).resolves.toMatchObject({ schedule: { scheduleId: "RRS-001" }, dueCount: 0 });
     await expect(caller.retentionReviewNotificationInbox()).resolves.toEqual([{ notificationId: "RRN-001", status: "Unread" }]);
     await expect(caller.markRetentionReviewNotificationRead({ notificationId: "RRN-001" })).resolves.toEqual({ success: true });
+    await expect(caller.retentionReviewNotificationPreferences()).resolves.toMatchObject({ inAppEnabled: true, emailEnabled: false });
+    await expect(caller.saveRetentionReviewNotificationPreferences({ inAppEnabled: true, emailEnabled: true })).resolves.toMatchObject({ emailEnabled: true });
+    await expect(caller.savedAuditViews()).resolves.toEqual([{ viewId: "SAV-001", title: "Analyst updates" }]);
+    await expect(caller.createSavedAuditView({ title: "Owner actions", workspaceRole: "control_owner", assignedBy: "Portfolio Owner" })).resolves.toMatchObject({ viewId: "SAV-002" });
+    await expect(caller.markSavedAuditViewUsed({ viewId: "SAV-001" })).resolves.toEqual({ success: true });
+    await expect(caller.deleteSavedAuditView({ viewId: "SAV-001" })).resolves.toEqual({ success: true });
     await expect(caller.roleAssignmentAudit({ page: 1, pageSize: 12, workspaceRole: "grc_analyst", assignedBy: "Portfolio Owner" })).resolves.toMatchObject({ total: 1 });
     await expect(caller.roleAssignmentAuditExport({ workspaceRole: "grc_analyst", assignedBy: "Portfolio Owner" })).resolves.toEqual([{ eventId: "RAE-001" }]);
     await expect(caller.configureRetentionReview({ active: false, cronExpression: "0 0 9 * * 1", thresholdDays: 30 })).resolves.toMatchObject({ active: false, thresholdDays: 30 });
@@ -136,6 +160,10 @@ describe("controlAssuranceRouter", () => {
     expect(operations.getRoleAssignmentAuditPage).toHaveBeenCalledWith({ page: 1, pageSize: 12, workspaceRole: "grc_analyst", assignedBy: "Portfolio Owner" });
     expect(operations.getRoleAssignmentAuditExport).toHaveBeenCalledWith({ workspaceRole: "grc_analyst", assignedBy: "Portfolio Owner" });
     expect(operations.markRetentionReviewNotificationRead).toHaveBeenCalledWith({ notificationId: "RRN-001", userId: 1 });
+    expect(operations.saveRetentionReviewNotificationPreferences).toHaveBeenCalledWith({ userId: 1, inAppEnabled: true, emailEnabled: true });
+    expect(operations.createSavedAuditView).toHaveBeenCalledWith({ ownerUserId: 1, title: "Owner actions", workspaceRole: "control_owner", assignedBy: "Portfolio Owner" });
+    expect(operations.markSavedAuditViewUsed).toHaveBeenCalledWith({ ownerUserId: 1, viewId: "SAV-001" });
+    expect(operations.deleteSavedAuditView).toHaveBeenCalledWith({ ownerUserId: 1, viewId: "SAV-001" });
   });
 
   it("accepts a trace export only through an authenticated GRC analyst workflow", async () => {

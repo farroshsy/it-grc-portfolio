@@ -123,3 +123,9 @@
 - [x] Save a validated checkpoint for retention notifications, audit filters, and the deferred Google Workspace directory integration.
 - [x] Add an actionable Google group-to-local-workspace-user selection bridge so authorized directory members can be included in bulk role assignment after authenticating into the workspace.
 - [x] Save a final validated checkpoint after the retention-notification, audit-filter, and Google group selection bridge are verified.
+- [x] Define per-administrator retention-notification preference defaults, saved audit-view ownership, and a server-only Google OAuth credential activation boundary.
+- [x] Build an administrator notification preference panel for in-app and email retention-review reminder channels.
+- [x] Implement personal saved audit-filter views with secure create, apply, and delete actions.
+- [x] Add a protected Google OAuth configuration panel that records activation status without ever returning client secret or refresh token values to the browser.
+- [x] Test preference storage, saved audit views, OAuth status redaction, responsive presentation, and save a checkpoint.
+- [x] Keep Google OAuth credential entry and activation explicitly deferred until the user later supplies administrator-approved server-only values; retain an OAuth-pending status in the current release.
