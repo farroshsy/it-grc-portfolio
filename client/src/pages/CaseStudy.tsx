@@ -1,4 +1,5 @@
 import { ArrowLeft, Braces, Copy, FileSearch, Loader2 } from "lucide-react";
+import React from "react";
 import { Link, useRoute } from "wouter";
 import ArtifactViewer from "@/components/ArtifactViewer";
 import PaymentSecurityDiagram, { PciInterviewReadiness } from "@/components/PaymentSecurityDiagram";

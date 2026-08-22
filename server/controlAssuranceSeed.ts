@@ -12,6 +12,7 @@ import {
   grcFindings,
   grcSystems,
   riskAcceptances,
+  retentionReviewSchedules,
 } from "../drizzle/schema";
 import { getDb } from "./db";
 import { buildFlowGuardGrcExport, evaluatePaymentCompletionFixture } from "./flowguardVerifier";
@@ -114,6 +115,8 @@ async function seed() {
   if (!templateExists) await db.insert(evidenceRetentionTemplates).values(retentionTemplates);
   const [grafanaConfigExists] = await db.select({ id: flowguardWebhookConfigs.id }).from(flowguardWebhookConfigs).where(eq(flowguardWebhookConfigs.provider, "Grafana")).limit(1);
   if (!grafanaConfigExists) await db.insert(flowguardWebhookConfigs).values({ configId: "FGW-GRAF-001", provider: "Grafana", active: false, endpointPath: "/api/webhooks/flowguard/grafana", updatedBy: "System default", updatedAt: new Date() });
+  const [retentionScheduleExists] = await db.select({ id: retentionReviewSchedules.id }).from(retentionReviewSchedules).where(eq(retentionReviewSchedules.scheduleId, "RRS-001")).limit(1);
+  if (!retentionScheduleExists) await db.insert(retentionReviewSchedules).values({ scheduleId: "RRS-001", active: false, cronExpression: "0 0 9 * * 1", thresholdDays: 30, scheduleCronTaskUid: null, lastRunAt: null, lastRunReminderCount: 0, configuredBy: "System default", updatedAt: new Date() });
 }
 
 export const simulatedControlAssuranceScenario = { systems, controls, submissions, tests, findings, acceptances, remediationLinks, flowguardContracts, flowguardExecutions, flowguardExceptionRecords, retentionTemplates };

@@ -104,3 +104,12 @@
 - [x] Test bulk role assignment, audit logging, retention-template application, webhook verification, and provider selection; verify responsive behavior and save a checkpoint.
 - [x] Document the intentionally deferred Grafana shared-secret handoff; the verified provider configuration remains inactive until the user supplies it in a future session.
 - [x] Save a validated checkpoint for bulk user search, role-assignment audit history, retention templates, and the inactive Grafana webhook design.
+- [x] Define ISO 27001 technical-control artifacts, retention-review reminder cadence, and audit-log pagination/export boundaries.
+- [x] Add concrete technical implementation artifacts to the ISO 27001 case study with provenance and claim-boundary safeguards.
+- [x] Implement scheduled administrator retention-review reminders with dashboard visibility and no raw evidence disclosure.
+- [x] Add role-assignment audit history pagination and a standards-compliant CSV export control.
+- [x] Test ISO artifacts, scheduled retention reviews, audit pagination/export, responsive presentation, and save a checkpoint.
+- [x] Preserve deployment-safe activation: the Monday 09:00 UTC retention schedule is configured but stays inactive until the site is published and an administrator enables it.
+- [x] Add direct automated coverage for the ISO technical-evidence case-study rendering and administrator audit pagination/export interactions.
+- [x] Save a validated checkpoint for the ISO enhancement, retention-review reminders, and audit pagination/export release.
+- [x] Create the final project checkpoint after verified ISO technical-evidence, scheduled-retention, audit-pagination, and CSV-export changes.

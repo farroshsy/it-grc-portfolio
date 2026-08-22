@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq } from "drizzle-orm";
 import {
   assuranceControls,
   assuranceTests,
@@ -17,6 +17,8 @@ import {
   grcSystems,
   grcUserRoles,
   riskAcceptances,
+  retentionReviewRuns,
+  retentionReviewSchedules,
   users,
 } from "../drizzle/schema";
 import { getDb } from "./db";
@@ -171,6 +173,24 @@ export async function getAdministrationData() {
   return { users: workspaceUsers, roleAssignments, attachments: await resolveAttachmentRetention(attachments), roleEvents, retentionTemplates, webhookConfigs };
 }
 
+export async function getRoleAssignmentAuditPage(input: { page: number; pageSize: number }) {
+  const db = await readyDb();
+  if (!db) throw new Error("The control-assurance datastore is unavailable.");
+  const page = Math.max(1, input.page);
+  const pageSize = Math.min(Math.max(10, input.pageSize), 100);
+  const [items, totals] = await Promise.all([
+    db.select().from(grcRoleAssignmentEvents).orderBy(desc(grcRoleAssignmentEvents.occurredAt)).limit(pageSize).offset((page - 1) * pageSize),
+    db.select({ total: count() }).from(grcRoleAssignmentEvents),
+  ]);
+  return { items, page, pageSize, total: totals[0]?.total ?? 0 };
+}
+
+export async function getRoleAssignmentAuditExport() {
+  const db = await readyDb();
+  if (!db) throw new Error("The control-assurance datastore is unavailable.");
+  return db.select().from(grcRoleAssignmentEvents).orderBy(desc(grcRoleAssignmentEvents.occurredAt)).limit(5000);
+}
+
 export async function assignWorkspaceRole(input: { userId: number; workspaceRole: "control_owner" | "grc_analyst" | "risk_approver"; active: boolean; assignedBy: string; batchId?: string | null }) {
   const db = await readyDb();
   if (!db) throw new Error("The control-assurance datastore is unavailable.");
@@ -223,6 +243,51 @@ export async function recordGrafanaWebhookDelivery(input: { deliveryId: string; 
   const db = await readyDb();
   if (!db) throw new Error("The control-assurance datastore is unavailable.");
   try { await db.insert(flowguardWebhookDeliveries).values({ deliveryId: input.deliveryId, provider: "Grafana", receivedAt: new Date(), status: input.status, executionId: input.executionId ?? null }); return true; } catch { return false; }
+}
+
+export async function getRetentionReviewDashboard() {
+  const db = await readyDb();
+  if (!db) throw new Error("The control-assurance datastore is unavailable.");
+  const [[schedule], attachmentRows, runs] = await Promise.all([
+    db.select().from(retentionReviewSchedules).where(eq(retentionReviewSchedules.scheduleId, "RRS-001")).limit(1),
+    db.select().from(evidenceAttachments).orderBy(asc(evidenceAttachments.retentionUntil)),
+    db.select().from(retentionReviewRuns).orderBy(desc(retentionReviewRuns.executedAt)).limit(8),
+  ]);
+  const now = new Date();
+  const threshold = new Date(now); threshold.setUTCDate(threshold.getUTCDate() + (schedule?.thresholdDays ?? 30));
+  const attachments = await resolveAttachmentRetention(attachmentRows);
+  const dueAttachments = attachments.filter((attachment) => attachment.retentionStatus === "Active" && attachment.retentionUntil <= threshold).map(({ attachmentId, evidenceType, retentionUntil, retentionStatus, provenance }) => ({ attachmentId, evidenceType, retentionUntil, retentionStatus, provenance }));
+  const overdueCount = attachments.filter((attachment) => attachment.retentionStatus === "Expired").length;
+  return { schedule: schedule ?? null, runs, dueAttachments, dueCount: dueAttachments.length, overdueCount };
+}
+
+export async function saveRetentionReviewSchedule(input: { active: boolean; cronExpression: string; thresholdDays: number; configuredBy: string; scheduleCronTaskUid?: string | null }) {
+  const db = await readyDb();
+  if (!db) throw new Error("The control-assurance datastore is unavailable.");
+  const [existing] = await db.select().from(retentionReviewSchedules).where(eq(retentionReviewSchedules.scheduleId, "RRS-001")).limit(1);
+  const values = { scheduleId: "RRS-001", active: input.active, cronExpression: input.cronExpression, thresholdDays: input.thresholdDays, scheduleCronTaskUid: input.scheduleCronTaskUid ?? existing?.scheduleCronTaskUid ?? null, configuredBy: input.configuredBy, updatedAt: new Date() };
+  await db.insert(retentionReviewSchedules).values(values).onDuplicateKeyUpdate({ set: { active: values.active, cronExpression: values.cronExpression, thresholdDays: values.thresholdDays, scheduleCronTaskUid: values.scheduleCronTaskUid, configuredBy: values.configuredBy, updatedAt: values.updatedAt } });
+  return values;
+}
+
+export async function runRetentionReviewByTaskUid(taskUid: string) {
+  const db = await readyDb();
+  if (!db) throw new Error("The control-assurance datastore is unavailable.");
+  const [schedule] = await db.select().from(retentionReviewSchedules).where(eq(retentionReviewSchedules.scheduleCronTaskUid, taskUid)).limit(1);
+  if (!schedule) return { ok: true as const, skipped: "orphan" as const };
+  if (!schedule.active) return { ok: true as const, skipped: "inactive" as const };
+  const now = new Date();
+  const dayKey = now.toISOString().slice(0, 10).replaceAll("-", "");
+  const runId = `RRR-${schedule.scheduleId.slice(-3)}-${dayKey}`;
+  const [alreadyRun] = await db.select().from(retentionReviewRuns).where(eq(retentionReviewRuns.runId, runId)).limit(1);
+  if (alreadyRun) return { ok: true as const, skipped: "duplicate" as const, runId };
+  const threshold = new Date(now); threshold.setUTCDate(threshold.getUTCDate() + schedule.thresholdDays);
+  const attachments = await resolveAttachmentRetention(await db.select().from(evidenceAttachments).orderBy(asc(evidenceAttachments.retentionUntil)));
+  const dueAttachmentCount = attachments.filter((attachment) => attachment.retentionStatus === "Active" && attachment.retentionUntil <= threshold).length;
+  const overdueAttachmentCount = attachments.filter((attachment) => attachment.retentionStatus === "Expired").length;
+  await db.insert(retentionReviewRuns).values({ runId, scheduleId: schedule.scheduleId, executedAt: now, dueAttachmentCount, overdueAttachmentCount, status: "Completed" });
+  await db.update(retentionReviewSchedules).set({ lastRunAt: now, lastRunReminderCount: dueAttachmentCount, updatedAt: now }).where(eq(retentionReviewSchedules.scheduleId, schedule.scheduleId));
+  return { ok: true as const, runId, dueAttachmentCount, overdueAttachmentCount };
 }
 
 export async function ingestFlowGuardPaymentTrace(input: { rawTrace: string; sourceName: string; ingestedBy: string }) {

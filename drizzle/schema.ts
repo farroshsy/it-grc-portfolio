@@ -292,6 +292,37 @@ export const evidenceRetentionTemplates = mysqlTable("evidence_retention_templat
   index("evidence_retention_template_type_idx").on(table.evidenceType, table.active),
 ]);
 
+/** Administrator-managed recurring review settings; schedule ownership is stored by Heartbeat task UID. */
+export const retentionReviewSchedules = mysqlTable("retention_review_schedules", {
+  id: int("id").autoincrement().primaryKey(),
+  scheduleId: varchar("scheduleId", { length: 40 }).notNull(),
+  active: boolean("active").default(false).notNull(),
+  cronExpression: varchar("cronExpression", { length: 80 }).notNull(),
+  thresholdDays: int("thresholdDays").notNull(),
+  scheduleCronTaskUid: varchar("scheduleCronTaskUid", { length: 65 }),
+  lastRunAt: timestamp("lastRunAt"),
+  lastRunReminderCount: int("lastRunReminderCount").default(0).notNull(),
+  configuredBy: varchar("configuredBy", { length: 80 }).notNull(),
+  updatedAt: timestamp("updatedAt").notNull(),
+}, (table) => [
+  uniqueIndex("retention_review_schedule_identifier_unique").on(table.scheduleId),
+  index("retention_review_schedule_task_uid_idx").on(table.scheduleCronTaskUid),
+]);
+
+/** Immutable metadata-only execution history for scheduled evidence-retention reviews. */
+export const retentionReviewRuns = mysqlTable("retention_review_runs", {
+  id: int("id").autoincrement().primaryKey(),
+  runId: varchar("runId", { length: 40 }).notNull(),
+  scheduleId: varchar("scheduleId", { length: 40 }).notNull(),
+  executedAt: timestamp("executedAt").notNull(),
+  dueAttachmentCount: int("dueAttachmentCount").notNull(),
+  overdueAttachmentCount: int("overdueAttachmentCount").notNull(),
+  status: varchar("status", { length: 40 }).notNull(),
+}, (table) => [
+  uniqueIndex("retention_review_run_identifier_unique").on(table.runId),
+  index("retention_review_runs_schedule_idx").on(table.scheduleId, table.executedAt),
+]);
+
 export const assuranceTests = mysqlTable("assurance_tests", {
   id: int("id").autoincrement().primaryKey(),
   assuranceTestId: varchar("assuranceTestId", { length: 40 }).notNull(),

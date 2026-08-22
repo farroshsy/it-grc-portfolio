@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import {
   auditRequests,
   artifactRows,
@@ -265,6 +265,27 @@ def main() -> int:
 if __name__ == "__main__":
     raise SystemExit(main())`;
 
+const isoTechnicalEvidenceCode = `type EvidenceManifest = {
+  accessReview: { mfaRequired: boolean; dormantPrivilegedAccounts: number; reviewApprovedAt?: string };
+  deployment: { protectedBranch: boolean; approvals: number; ciPassed: boolean; changeId?: string };
+  auditLogging: { centralArchive: boolean; immutableRetentionDays: number; reviewedAt?: string };
+};
+type Check = { control: string; status: "PASS" | "FAIL"; reason: string; evidence: string[] };
+
+export function evaluateIsoTechnicalEvidence(manifest: EvidenceManifest): Check[] {
+  return [
+    { control: "Access governance", status: manifest.accessReview.mfaRequired && manifest.accessReview.dormantPrivilegedAccounts === 0 && Boolean(manifest.accessReview.reviewApprovedAt) ? "PASS" : "FAIL", reason: "Privileged access should be MFA-protected, reviewed, and free of dormant accounts.", evidence: ["MFA setting", "review approval timestamp", "privileged-account exception count"] },
+    { control: "Change integrity", status: manifest.deployment.protectedBranch && manifest.deployment.approvals >= 1 && manifest.deployment.ciPassed && Boolean(manifest.deployment.changeId) ? "PASS" : "FAIL", reason: "Production changes should retain an approved, test-passing change trail.", evidence: ["branch-protection setting", "approval count", "CI result", "change identifier"] },
+    { control: "Audit-log availability", status: manifest.auditLogging.centralArchive && manifest.auditLogging.immutableRetentionDays >= 365 && Boolean(manifest.auditLogging.reviewedAt) ? "PASS" : "FAIL", reason: "Security logging should be centralized, retained, and periodically reviewed.", evidence: ["log-archive configuration", "retention period", "review timestamp"] },
+  ];
+}
+// Illustrative input only — run with authorized real configuration exports.
+console.table(evaluateIsoTechnicalEvidence({
+  accessReview: { mfaRequired: true, dormantPrivilegedAccounts: 0, reviewApprovedAt: "2026-08-18" },
+  deployment: { protectedBranch: true, approvals: 1, ciPassed: true, changeId: "CHG-2041" },
+  auditLogging: { centralArchive: true, immutableRetentionDays: 365, reviewedAt: "2026-08-19" },
+}));`;
+
 const seedCases: SeedCaseStudy[] = [
   {
     slug: "fintech-risk-assessment",
@@ -316,7 +337,7 @@ const seedCases: SeedCaseStudy[] = [
     slug: "iso-27001-control-assessment",
     title: "ISO 27001 Control Assessment",
     shortTitle: "ISO 27001 Assessment",
-    summary: "An independent-research assessment model that turns ISMS objectives into implementable controls, evidence requests, tests, gaps, and risk-based priorities.",
+    summary: "An independent-research assessment model that turns ISMS objectives into testable access, deployment, and logging controls with evidence requests, tests, gaps, and risk-based priorities.",
     scenario: "Independent Research: an illustrative SaaS provider is preparing an internal readiness review for an ISO/IEC 27001:2022-aligned information security management system.",
     provenance: "Independent Research",
     accent: "#3d5a97",
@@ -327,11 +348,11 @@ const seedCases: SeedCaseStudy[] = [
       ["Methodology", "Each requirement theme is translated into a business objective, risk, control statement, control owner, evidence request, test procedure, result, finding, and remediation decision. Priorities reflect residual risk and evidence confidence."],
       ["Findings", "The assessment model shows that a formal control can exist but remain difficult to prove when evidence ownership is ambiguous. It also identifies an opportunity to standardize evidence retention for supplier due diligence."],
       ["Risk", "Controls with unclear ownership or dispersed evidence can fail during surveillance, incident investigation, or management review even when day-to-day practices are sound."],
-      ["Controls", "The target state combines documented control objectives with workflow-integrated evidence: review approvals, change records, access attestations, supplier records, and management review inputs."],
-      ["Evidence", "Evidence is modeled as discrete, dateable, attributable records. The case uses synthetic evidence descriptions only and does not present an ISO certificate, auditor statement, or real organization evidence."],
+      ["Controls", "The target state combines documented objectives with technical guardrails: MFA-backed privileged access, protected production branches with approval and CI evidence, and centralized audit logging with retained review timestamps. These are implementation examples, not reproduced ISO text."],
+      ["Evidence", "Evidence is modeled as discrete, dateable, attributable records: identity-provider settings, access-review approvals, protected-branch configuration, CI results, change identifiers, log-archive settings, and periodic log-review timestamps. The case uses synthetic descriptions only and does not present an ISO certificate or auditor statement."],
       ["Remediation", "The plan assigns a control-evidence steward for each high-value control, creates a retention location, and requires a post-remediation retest against the original test procedure."],
       ["Outcome", "The intended outcome is a defensible control narrative that can be traced from information-security objective to evidence, test result, and management decision."],
-      ["Artifacts", "The interactive tabs provide independent-research artifacts that make the requirement-to-control-to-evidence chain inspectable."],
+      ["Artifacts", "The interactive tabs and runnable TypeScript evidence-manifest evaluator make the requirement-to-control-to-evidence chain inspectable. Results are technical evidence cues for analyst review, not an automated certification determination."],
     ]),
     artifacts: createArtifactSet("ISO", "Independent Research", "ISO 27001 Control Assessment"),
     risks: [
@@ -351,6 +372,8 @@ const seedCases: SeedCaseStudy[] = [
       { actionId: "ISO-A02", title: "Retest selected supplier files against the documented cadence.", linkedRiskId: "ISO-R02", owner: "GRC", status: "Planned", severity: "Medium", dueDate: "2026-09-15" },
     ],
     sources: [globalSources.iso, globalSources.nist],
+    codeLanguage: "typescript",
+    code: isoTechnicalEvidenceCode,
   },
   {
     slug: "indonesia-regulatory-mapping",
@@ -515,4 +538,11 @@ async function seedSupplementaryEvidence(db: NonNullable<Awaited<ReturnType<type
   ]);
   if (existingAudit.length === 0) await db.insert(auditRequests).values(simulatedAuditRequests.map((request) => ({ ...request, caseStudyId: fintech.id, dueDate: new Date(request.dueDate) })));
   if (existingPolicies.length === 0) await db.insert(policyRecords).values(simulatedPolicies);
+  const [iso] = await db.select({ id: caseStudies.id }).from(caseStudies).where(eq(caseStudies.slug, "iso-27001-control-assessment")).limit(1);
+  if (iso) {
+    await db.update(caseStudies).set({ summary: "An independent-research assessment model that turns ISMS objectives into testable access, deployment, and logging controls with evidence requests, tests, gaps, and risk-based priorities.", codeLanguage: "typescript", code: isoTechnicalEvidenceCode }).where(eq(caseStudies.id, iso.id));
+    await db.update(caseStudySections).set({ body: "The target state combines documented objectives with technical guardrails: MFA-backed privileged access, protected production branches with approval and CI evidence, and centralized audit logging with retained review timestamps. These are implementation examples, not reproduced ISO text." }).where(and(eq(caseStudySections.caseStudyId, iso.id), eq(caseStudySections.sectionTitle, "Controls")));
+    await db.update(caseStudySections).set({ body: "Evidence is modeled as discrete, dateable, attributable records: identity-provider settings, access-review approvals, protected-branch configuration, CI results, change identifiers, log-archive settings, and periodic log-review timestamps. The case uses synthetic descriptions only and does not present an ISO certificate or auditor statement." }).where(and(eq(caseStudySections.caseStudyId, iso.id), eq(caseStudySections.sectionTitle, "Evidence")));
+    await db.update(caseStudySections).set({ body: "The interactive tabs and runnable TypeScript evidence-manifest evaluator make the requirement-to-control-to-evidence chain inspectable. Results are technical evidence cues for analyst review, not an automated certification determination." }).where(and(eq(caseStudySections.caseStudyId, iso.id), eq(caseStudySections.sectionTitle, "Artifacts")));
+  }
 }

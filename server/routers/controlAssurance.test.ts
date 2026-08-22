@@ -14,6 +14,8 @@ const operations = vi.hoisted(() => ({
   upsertRetentionTemplate: vi.fn(),
   applyRetentionTemplate: vi.fn(),
   setGrafanaWebhookConfig: vi.fn(),
+  getRetentionReviewDashboard: vi.fn(),
+  saveRetentionReviewSchedule: vi.fn(),
   setEvidenceAttachmentRetention: vi.fn(),
   ingestFlowGuardPaymentTrace: vi.fn(),
   setEvidenceReview: vi.fn(),
@@ -102,6 +104,8 @@ describe("controlAssuranceRouter", () => {
     operations.upsertRetentionTemplate.mockResolvedValue({ success: true, templateId: "RTP-001" });
     operations.applyRetentionTemplate.mockResolvedValue({ success: true, retentionUntil: new Date("2027-08-21") });
     operations.setGrafanaWebhookConfig.mockResolvedValue({ success: true, active: false });
+    operations.getRetentionReviewDashboard.mockResolvedValue({ schedule: { scheduleId: "RRS-001", active: false, cronExpression: "0 0 9 * * 1", thresholdDays: 30 }, runs: [], dueAttachments: [], dueCount: 0, overdueCount: 0 });
+    operations.saveRetentionReviewSchedule.mockResolvedValue({ scheduleId: "RRS-001", active: false, cronExpression: "0 0 9 * * 1", thresholdDays: 30 });
     const caller = controlAssuranceRouter.createCaller(authenticatedContext);
     await expect(caller.administration()).resolves.toMatchObject({ users: [{ id: 2 }] });
     await expect(caller.assignWorkspaceRole({ userId: 2, workspaceRole: "control_owner", active: true })).resolves.toEqual({ success: true });
@@ -110,10 +114,13 @@ describe("controlAssuranceRouter", () => {
     await expect(caller.upsertRetentionTemplate({ title: "Change evidence", evidenceType: "Change record", retentionDays: 730, retentionNote: "Retain approved production change evidence.", active: true })).resolves.toMatchObject({ templateId: "RTP-001" });
     await expect(caller.applyRetentionTemplate({ attachmentId: "ATT-001", templateId: "RTP-001" })).resolves.toMatchObject({ success: true });
     await expect(caller.setGrafanaWebhook({ active: false })).resolves.toMatchObject({ active: false });
+    await expect(caller.retentionReviewDashboard()).resolves.toMatchObject({ schedule: { scheduleId: "RRS-001" }, dueCount: 0 });
+    await expect(caller.configureRetentionReview({ active: false, cronExpression: "0 0 9 * * 1", thresholdDays: 30 })).resolves.toMatchObject({ active: false, thresholdDays: 30 });
     expect(operations.assignWorkspaceRole).toHaveBeenCalledWith({ userId: 2, workspaceRole: "control_owner", active: true, assignedBy: "Portfolio Owner" });
     expect(operations.setEvidenceAttachmentRetention).toHaveBeenCalledWith(expect.objectContaining({ attachmentId: "ATT-001", retentionStatus: "Legal hold" }));
     expect(operations.bulkAssignWorkspaceRole).toHaveBeenCalledWith(expect.objectContaining({ userIds: [2, 3], workspaceRole: "grc_analyst", assignedBy: "Portfolio Owner" }));
     expect(operations.setGrafanaWebhookConfig).toHaveBeenCalledWith({ active: false, updatedBy: "Portfolio Owner" });
+    expect(operations.saveRetentionReviewSchedule).toHaveBeenCalledWith({ active: false, cronExpression: "0 0 9 * * 1", thresholdDays: 30, configuredBy: "Portfolio Owner", scheduleCronTaskUid: null });
   });
 
   it("accepts a trace export only through an authenticated GRC analyst workflow", async () => {
