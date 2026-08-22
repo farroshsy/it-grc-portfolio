@@ -19,6 +19,7 @@ import {
   riskAcceptances,
   retentionReviewRuns,
   retentionReviewSchedules,
+  retentionReviewNotifications,
   users,
 } from "../drizzle/schema";
 import { getDb } from "./db";
@@ -173,22 +174,25 @@ export async function getAdministrationData() {
   return { users: workspaceUsers, roleAssignments, attachments: await resolveAttachmentRetention(attachments), roleEvents, retentionTemplates, webhookConfigs };
 }
 
-export async function getRoleAssignmentAuditPage(input: { page: number; pageSize: number }) {
+export async function getRoleAssignmentAuditPage(input: { page: number; pageSize: number; workspaceRole?: "control_owner" | "grc_analyst" | "risk_approver"; assignedBy?: string }) {
   const db = await readyDb();
   if (!db) throw new Error("The control-assurance datastore is unavailable.");
   const page = Math.max(1, input.page);
   const pageSize = Math.min(Math.max(10, input.pageSize), 100);
+  const criteria = [input.workspaceRole ? eq(grcRoleAssignmentEvents.workspaceRole, input.workspaceRole) : undefined, input.assignedBy?.trim() ? eq(grcRoleAssignmentEvents.assignedBy, input.assignedBy.trim()) : undefined].filter(Boolean) as ReturnType<typeof eq>[];
+  const where = criteria.length ? and(...criteria) : undefined;
   const [items, totals] = await Promise.all([
-    db.select().from(grcRoleAssignmentEvents).orderBy(desc(grcRoleAssignmentEvents.occurredAt)).limit(pageSize).offset((page - 1) * pageSize),
-    db.select({ total: count() }).from(grcRoleAssignmentEvents),
+    db.select().from(grcRoleAssignmentEvents).where(where).orderBy(desc(grcRoleAssignmentEvents.occurredAt)).limit(pageSize).offset((page - 1) * pageSize),
+    db.select({ total: count() }).from(grcRoleAssignmentEvents).where(where),
   ]);
   return { items, page, pageSize, total: totals[0]?.total ?? 0 };
 }
 
-export async function getRoleAssignmentAuditExport() {
+export async function getRoleAssignmentAuditExport(input: { workspaceRole?: "control_owner" | "grc_analyst" | "risk_approver"; assignedBy?: string } = {}) {
   const db = await readyDb();
   if (!db) throw new Error("The control-assurance datastore is unavailable.");
-  return db.select().from(grcRoleAssignmentEvents).orderBy(desc(grcRoleAssignmentEvents.occurredAt)).limit(5000);
+  const criteria = [input.workspaceRole ? eq(grcRoleAssignmentEvents.workspaceRole, input.workspaceRole) : undefined, input.assignedBy?.trim() ? eq(grcRoleAssignmentEvents.assignedBy, input.assignedBy.trim()) : undefined].filter(Boolean) as ReturnType<typeof eq>[];
+  return db.select().from(grcRoleAssignmentEvents).where(criteria.length ? and(...criteria) : undefined).orderBy(desc(grcRoleAssignmentEvents.occurredAt)).limit(5000);
 }
 
 export async function assignWorkspaceRole(input: { userId: number; workspaceRole: "control_owner" | "grc_analyst" | "risk_approver"; active: boolean; assignedBy: string; batchId?: string | null }) {
@@ -286,8 +290,26 @@ export async function runRetentionReviewByTaskUid(taskUid: string) {
   const dueAttachmentCount = attachments.filter((attachment) => attachment.retentionStatus === "Active" && attachment.retentionUntil <= threshold).length;
   const overdueAttachmentCount = attachments.filter((attachment) => attachment.retentionStatus === "Expired").length;
   await db.insert(retentionReviewRuns).values({ runId, scheduleId: schedule.scheduleId, executedAt: now, dueAttachmentCount, overdueAttachmentCount, status: "Completed" });
+  const administrators = await db.select({ id: users.id }).from(users).where(eq(users.role, "admin"));
+  await Promise.all(administrators.flatMap((administrator) => [
+    db.insert(retentionReviewNotifications).values({ notificationId: `RRN-${runId}-${administrator.id}-APP`, runId, recipientUserId: administrator.id, channel: "in_app", status: "Unread", dueAttachmentCount, overdueAttachmentCount, createdAt: now, readAt: null }).onDuplicateKeyUpdate({ set: { status: "Unread" } }),
+    db.insert(retentionReviewNotifications).values({ notificationId: `RRN-${runId}-${administrator.id}-EMAIL`, runId, recipientUserId: administrator.id, channel: "email", status: "Awaiting Google OAuth", dueAttachmentCount, overdueAttachmentCount, createdAt: now, readAt: null }).onDuplicateKeyUpdate({ set: { status: "Awaiting Google OAuth" } }),
+  ]));
   await db.update(retentionReviewSchedules).set({ lastRunAt: now, lastRunReminderCount: dueAttachmentCount, updatedAt: now }).where(eq(retentionReviewSchedules.scheduleId, schedule.scheduleId));
-  return { ok: true as const, runId, dueAttachmentCount, overdueAttachmentCount };
+  return { ok: true as const, runId, dueAttachmentCount, overdueAttachmentCount, notifiedAdministrators: administrators.length };
+}
+
+export async function getRetentionReviewNotificationInbox(userId: number) {
+  const db = await readyDb();
+  if (!db) throw new Error("The control-assurance datastore is unavailable.");
+  return db.select().from(retentionReviewNotifications).where(and(eq(retentionReviewNotifications.recipientUserId, userId), eq(retentionReviewNotifications.channel, "in_app"))).orderBy(desc(retentionReviewNotifications.createdAt)).limit(20);
+}
+
+export async function markRetentionReviewNotificationRead(input: { notificationId: string; userId: number }) {
+  const db = await readyDb();
+  if (!db) throw new Error("The control-assurance datastore is unavailable.");
+  await db.update(retentionReviewNotifications).set({ status: "Read", readAt: new Date() }).where(and(eq(retentionReviewNotifications.notificationId, input.notificationId), eq(retentionReviewNotifications.recipientUserId, input.userId), eq(retentionReviewNotifications.channel, "in_app")));
+  return { success: true as const };
 }
 
 export async function ingestFlowGuardPaymentTrace(input: { rawTrace: string; sourceName: string; ingestedBy: string }) {

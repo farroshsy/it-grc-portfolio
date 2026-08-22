@@ -15,6 +15,10 @@ const operations = vi.hoisted(() => ({
   applyRetentionTemplate: vi.fn(),
   setGrafanaWebhookConfig: vi.fn(),
   getRetentionReviewDashboard: vi.fn(),
+  getRetentionReviewNotificationInbox: vi.fn(),
+  markRetentionReviewNotificationRead: vi.fn(),
+  getRoleAssignmentAuditPage: vi.fn(),
+  getRoleAssignmentAuditExport: vi.fn(),
   saveRetentionReviewSchedule: vi.fn(),
   setEvidenceAttachmentRetention: vi.fn(),
   ingestFlowGuardPaymentTrace: vi.fn(),
@@ -105,6 +109,10 @@ describe("controlAssuranceRouter", () => {
     operations.applyRetentionTemplate.mockResolvedValue({ success: true, retentionUntil: new Date("2027-08-21") });
     operations.setGrafanaWebhookConfig.mockResolvedValue({ success: true, active: false });
     operations.getRetentionReviewDashboard.mockResolvedValue({ schedule: { scheduleId: "RRS-001", active: false, cronExpression: "0 0 9 * * 1", thresholdDays: 30 }, runs: [], dueAttachments: [], dueCount: 0, overdueCount: 0 });
+    operations.getRetentionReviewNotificationInbox.mockResolvedValue([{ notificationId: "RRN-001", status: "Unread" }]);
+    operations.markRetentionReviewNotificationRead.mockResolvedValue({ success: true });
+    operations.getRoleAssignmentAuditPage.mockResolvedValue({ items: [{ eventId: "RAE-001", workspaceRole: "grc_analyst", assignedBy: "Portfolio Owner" }], page: 1, pageSize: 12, total: 1 });
+    operations.getRoleAssignmentAuditExport.mockResolvedValue([{ eventId: "RAE-001" }]);
     operations.saveRetentionReviewSchedule.mockResolvedValue({ scheduleId: "RRS-001", active: false, cronExpression: "0 0 9 * * 1", thresholdDays: 30 });
     const caller = controlAssuranceRouter.createCaller(authenticatedContext);
     await expect(caller.administration()).resolves.toMatchObject({ users: [{ id: 2 }] });
@@ -115,12 +123,19 @@ describe("controlAssuranceRouter", () => {
     await expect(caller.applyRetentionTemplate({ attachmentId: "ATT-001", templateId: "RTP-001" })).resolves.toMatchObject({ success: true });
     await expect(caller.setGrafanaWebhook({ active: false })).resolves.toMatchObject({ active: false });
     await expect(caller.retentionReviewDashboard()).resolves.toMatchObject({ schedule: { scheduleId: "RRS-001" }, dueCount: 0 });
+    await expect(caller.retentionReviewNotificationInbox()).resolves.toEqual([{ notificationId: "RRN-001", status: "Unread" }]);
+    await expect(caller.markRetentionReviewNotificationRead({ notificationId: "RRN-001" })).resolves.toEqual({ success: true });
+    await expect(caller.roleAssignmentAudit({ page: 1, pageSize: 12, workspaceRole: "grc_analyst", assignedBy: "Portfolio Owner" })).resolves.toMatchObject({ total: 1 });
+    await expect(caller.roleAssignmentAuditExport({ workspaceRole: "grc_analyst", assignedBy: "Portfolio Owner" })).resolves.toEqual([{ eventId: "RAE-001" }]);
     await expect(caller.configureRetentionReview({ active: false, cronExpression: "0 0 9 * * 1", thresholdDays: 30 })).resolves.toMatchObject({ active: false, thresholdDays: 30 });
     expect(operations.assignWorkspaceRole).toHaveBeenCalledWith({ userId: 2, workspaceRole: "control_owner", active: true, assignedBy: "Portfolio Owner" });
     expect(operations.setEvidenceAttachmentRetention).toHaveBeenCalledWith(expect.objectContaining({ attachmentId: "ATT-001", retentionStatus: "Legal hold" }));
     expect(operations.bulkAssignWorkspaceRole).toHaveBeenCalledWith(expect.objectContaining({ userIds: [2, 3], workspaceRole: "grc_analyst", assignedBy: "Portfolio Owner" }));
     expect(operations.setGrafanaWebhookConfig).toHaveBeenCalledWith({ active: false, updatedBy: "Portfolio Owner" });
     expect(operations.saveRetentionReviewSchedule).toHaveBeenCalledWith({ active: false, cronExpression: "0 0 9 * * 1", thresholdDays: 30, configuredBy: "Portfolio Owner", scheduleCronTaskUid: null });
+    expect(operations.getRoleAssignmentAuditPage).toHaveBeenCalledWith({ page: 1, pageSize: 12, workspaceRole: "grc_analyst", assignedBy: "Portfolio Owner" });
+    expect(operations.getRoleAssignmentAuditExport).toHaveBeenCalledWith({ workspaceRole: "grc_analyst", assignedBy: "Portfolio Owner" });
+    expect(operations.markRetentionReviewNotificationRead).toHaveBeenCalledWith({ notificationId: "RRN-001", userId: 1 });
   });
 
   it("accepts a trace export only through an authenticated GRC analyst workflow", async () => {

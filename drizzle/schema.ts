@@ -323,6 +323,24 @@ export const retentionReviewRuns = mysqlTable("retention_review_runs", {
   index("retention_review_runs_schedule_idx").on(table.scheduleId, table.executedAt),
 ]);
 
+/** Per-recipient delivery metadata for retention review reminders. File names, evidence content, and storage links are never stored here. */
+export const retentionReviewNotifications = mysqlTable("retention_review_notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  notificationId: varchar("notificationId", { length: 56 }).notNull(),
+  runId: varchar("runId", { length: 40 }).notNull(),
+  recipientUserId: int("recipientUserId").notNull(),
+  channel: varchar("channel", { length: 24 }).notNull(),
+  status: varchar("status", { length: 40 }).notNull(),
+  dueAttachmentCount: int("dueAttachmentCount").notNull(),
+  overdueAttachmentCount: int("overdueAttachmentCount").notNull(),
+  createdAt: timestamp("createdAt").notNull(),
+  readAt: timestamp("readAt"),
+}, (table) => [
+  uniqueIndex("retention_review_notification_identifier_unique").on(table.notificationId),
+  uniqueIndex("retention_review_notification_delivery_unique").on(table.runId, table.recipientUserId, table.channel),
+  index("retention_review_notification_recipient_idx").on(table.recipientUserId, table.readAt, table.createdAt),
+]);
+
 export const assuranceTests = mysqlTable("assurance_tests", {
   id: int("id").autoincrement().primaryKey(),
   assuranceTestId: varchar("assuranceTestId", { length: 40 }).notNull(),

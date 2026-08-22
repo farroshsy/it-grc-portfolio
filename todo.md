@@ -113,3 +113,13 @@
 - [x] Add direct automated coverage for the ISO technical-evidence case-study rendering and administrator audit pagination/export interactions.
 - [x] Save a validated checkpoint for the ISO enhancement, retention-review reminders, and audit pagination/export release.
 - [x] Create the final project checkpoint after verified ISO technical-evidence, scheduled-retention, audit-pagination, and CSV-export changes.
+- [x] Define privacy-safe retention-review notification behavior, server-backed audit filter criteria, and an IdP group-discovery integration boundary with offline fallback.
+- [x] Implement scheduled retention-review in-app notifications for administrators and email delivery tracking with duplicate prevention; email remains pending Google OAuth authorization.
+- [x] Add role and actor filters to the paginated role-assignment audit history and retain filtered CSV export behavior.
+- [x] Connect administrator bulk discovery to a read-only Google Workspace Directory adapter, preserving an explicit offline workspace-user fallback until authorization is active.
+- [x] Select Google Workspace directory group membership as the read-only IdP source and expose its explicit OAuth-pending state in the administrator console.
+- [x] Preserve the Google Workspace group-discovery and email adapters as inactive configuration pending future OAuth authorization; retain local discovery and in-app notification fallback in the current release.
+- [x] Test notifications, audit filters, IdP discovery fallback, responsive presentation, and save a checkpoint.
+- [x] Save a validated checkpoint for retention notifications, audit filters, and the deferred Google Workspace directory integration.
+- [x] Add an actionable Google group-to-local-workspace-user selection bridge so authorized directory members can be included in bulk role assignment after authenticating into the workspace.
+- [x] Save a final validated checkpoint after the retention-notification, audit-filter, and Google group selection bridge are verified.

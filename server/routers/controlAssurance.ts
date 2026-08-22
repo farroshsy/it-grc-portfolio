@@ -1,9 +1,10 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { applyRetentionTemplate, assignWorkspaceRole, attachEvidenceFile, bulkAssignWorkspaceRole, decideRiskAcceptance, getAdministrationData, getComplianceDashboardData, getControlAssuranceHubData, getFlowguardVerificationData, getRemediationExportPayload, getRetentionReviewDashboard, getRoleAssignmentAuditExport, getRoleAssignmentAuditPage, importRemediationSnapshot, ingestFlowGuardPaymentTrace, listEvidenceAttachments, listWorkspaceEvidenceAttachments, markReadyForGithubIssue, proposeRiskAcceptance, recordTestDecision, saveRetentionReviewSchedule, setEvidenceAttachmentRetention, setEvidenceReview, setFindingTreatment, setGrafanaWebhookConfig, submitEvidence, syncRemediationStatus, upsertRetentionTemplate } from "../controlAssuranceDb";
+import { applyRetentionTemplate, assignWorkspaceRole, attachEvidenceFile, bulkAssignWorkspaceRole, decideRiskAcceptance, getAdministrationData, getComplianceDashboardData, getControlAssuranceHubData, getFlowguardVerificationData, getRemediationExportPayload, getRetentionReviewDashboard, getRetentionReviewNotificationInbox, getRoleAssignmentAuditExport, getRoleAssignmentAuditPage, importRemediationSnapshot, ingestFlowGuardPaymentTrace, listEvidenceAttachments, listWorkspaceEvidenceAttachments, markReadyForGithubIssue, markRetentionReviewNotificationRead, proposeRiskAcceptance, recordTestDecision, saveRetentionReviewSchedule, setEvidenceAttachmentRetention, setEvidenceReview, setFindingTreatment, setGrafanaWebhookConfig, submitEvidence, syncRemediationStatus, upsertRetentionTemplate } from "../controlAssuranceDb";
 import { createHeartbeatJob, updateHeartbeatJob } from "../_core/heartbeat";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { canPerformWorkspaceAction, getWorkspaceRoles, type WorkspaceRole } from "../grcAccess";
+import { listGoogleWorkspaceGroupMembers, listGoogleWorkspaceGroups } from "../googleWorkspaceDirectory";
 
 async function assertWorkspaceRole(user: Parameters<typeof getWorkspaceRoles>[0], allowed: WorkspaceRole[]) {
   const roles = await getWorkspaceRoles(user);
@@ -35,8 +36,8 @@ export const controlAssuranceRouter = router({
     if (!data) throw new Error("The administration datastore is unavailable.");
     return data;
   }),
-  roleAssignmentAudit: adminProcedure.input(z.object({ page: z.number().int().min(1), pageSize: z.number().int().min(10).max(100) })).query(async ({ input }) => getRoleAssignmentAuditPage(input)),
-  roleAssignmentAuditExport: adminProcedure.query(async () => getRoleAssignmentAuditExport()),
+  roleAssignmentAudit: adminProcedure.input(z.object({ page: z.number().int().min(1), pageSize: z.number().int().min(10).max(100), workspaceRole: z.enum(["control_owner", "grc_analyst", "risk_approver"]).optional(), assignedBy: z.string().min(1).max(80).optional() })).query(async ({ input }) => getRoleAssignmentAuditPage(input)),
+  roleAssignmentAuditExport: adminProcedure.input(z.object({ workspaceRole: z.enum(["control_owner", "grc_analyst", "risk_approver"]).optional(), assignedBy: z.string().min(1).max(80).optional() })).query(async ({ input }) => getRoleAssignmentAuditExport(input)),
   assignWorkspaceRole: adminProcedure.input(z.object({ userId: z.number().int().positive(), workspaceRole: z.enum(["control_owner", "grc_analyst", "risk_approver"]), active: z.boolean() })).mutation(async ({ input, ctx }) => assignWorkspaceRole({ ...input, assignedBy: ctx.user.name || "Workspace administrator" })),
   bulkAssignWorkspaceRole: adminProcedure.input(z.object({ userIds: z.array(z.number().int().positive()).min(1).max(100), workspaceRole: z.enum(["control_owner", "grc_analyst", "risk_approver"]), active: z.boolean() })).mutation(async ({ input, ctx }) => bulkAssignWorkspaceRole({ ...input, assignedBy: ctx.user.name || "Workspace administrator" })),
   setAttachmentRetention: adminProcedure.input(z.object({ attachmentId: z.string().min(1).max(40), retentionUntil: z.coerce.date(), retentionStatus: z.enum(["Active", "Legal hold"]), retentionNote: z.string().max(500).nullable() })).mutation(async ({ input }) => setEvidenceAttachmentRetention(input)),
@@ -44,6 +45,10 @@ export const controlAssuranceRouter = router({
   applyRetentionTemplate: adminProcedure.input(z.object({ attachmentId: z.string().min(1).max(40), templateId: z.string().min(1).max(40) })).mutation(async ({ input }) => applyRetentionTemplate(input)),
   setGrafanaWebhook: adminProcedure.input(z.object({ active: z.boolean() })).mutation(async ({ input, ctx }) => setGrafanaWebhookConfig({ ...input, updatedBy: ctx.user.name || "Workspace administrator" })),
   retentionReviewDashboard: adminProcedure.query(async () => getRetentionReviewDashboard()),
+  retentionReviewNotificationInbox: adminProcedure.query(async ({ ctx }) => getRetentionReviewNotificationInbox(ctx.user.id)),
+  markRetentionReviewNotificationRead: adminProcedure.input(z.object({ notificationId: z.string().min(1).max(56) })).mutation(async ({ input, ctx }) => markRetentionReviewNotificationRead({ ...input, userId: ctx.user.id })),
+  googleWorkspaceGroups: adminProcedure.input(z.object({ query: z.string().max(120).optional() })).query(async ({ input }) => listGoogleWorkspaceGroups(input.query)),
+  googleWorkspaceGroupMembers: adminProcedure.input(z.object({ groupKey: z.string().min(3).max(320) })).query(async ({ input }) => listGoogleWorkspaceGroupMembers(input.groupKey)),
   configureRetentionReview: adminProcedure.input(z.object({ active: z.boolean(), cronExpression: z.string().regex(/^\d+\s+\d+\s+\d+\s+\*\s+\*\s+\d+$/, "Use a six-field UTC cron expression."), thresholdDays: z.number().int().min(1).max(365) })).mutation(async ({ input, ctx }) => {
     const existing = await getRetentionReviewDashboard();
     if (process.env.NODE_ENV !== "production" && input.active) throw new TRPCError({ code: "BAD_REQUEST", message: "Publish the site before enabling the scheduled retention review." });
