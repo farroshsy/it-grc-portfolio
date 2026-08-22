@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq, or } from "drizzle-orm";
 import {
   assuranceControls,
   assuranceTests,
@@ -30,6 +30,7 @@ import { controlStatusForTestDecision, effectiveRiskAcceptanceStatus, evidenceSt
 import { createExternalRemediation, refreshExternalRemediation, type RemediationProvider } from "./remediationProvider";
 import { storagePut } from "./storage";
 import { evaluatePaymentTraceExport, parseFlowGuardTraceExport } from "./flowguardTraceIngestion";
+import { getGoogleWorkspaceEmailStatus, sendRetentionReviewEmail } from "./googleWorkspaceMail";
 
 async function readyDb() {
   const db = await getDb();
@@ -322,6 +323,40 @@ export async function markRetentionReviewNotificationRead(input: { notificationI
   return { success: true as const };
 }
 
+export function getRetentionReviewEmailDeliveryStatus() {
+  return getGoogleWorkspaceEmailStatus();
+}
+
+export async function processQueuedRetentionReviewEmails(input: { runId?: string } = {}) {
+  const db = await readyDb();
+  if (!db) throw new Error("The control-assurance datastore is unavailable.");
+  const status = getGoogleWorkspaceEmailStatus();
+  const queued = await db.select().from(retentionReviewNotifications).where(and(
+    eq(retentionReviewNotifications.channel, "email"),
+    or(eq(retentionReviewNotifications.status, "Awaiting Google OAuth"), eq(retentionReviewNotifications.status, "Delivery failed")),
+    ...(input.runId ? [eq(retentionReviewNotifications.runId, input.runId)] : []),
+  ));
+  if (!status.configured) return { configured: false as const, pending: queued.length, attempted: 0, delivered: 0, failed: 0, status };
+  const administrators = await db.select({ id: users.id, email: users.email }).from(users).where(eq(users.role, "admin"));
+  const recipientByUserId = new Map(administrators.map((administrator) => [administrator.id, administrator.email]));
+  let delivered = 0;
+  let failed = 0;
+  for (const notification of queued) {
+    const attemptedAt = new Date();
+    const recipientEmail = recipientByUserId.get(notification.recipientUserId);
+    try {
+      if (!recipientEmail) throw new Error("Recipient email is unavailable.");
+      await sendRetentionReviewEmail({ recipientEmail, dueAttachmentCount: notification.dueAttachmentCount, overdueAttachmentCount: notification.overdueAttachmentCount });
+      await db.update(retentionReviewNotifications).set({ status: "Delivered", deliveryAttemptedAt: attemptedAt, deliveredAt: new Date(), deliveryError: null }).where(eq(retentionReviewNotifications.notificationId, notification.notificationId));
+      delivered += 1;
+    } catch {
+      await db.update(retentionReviewNotifications).set({ status: "Delivery failed", deliveryAttemptedAt: attemptedAt, deliveryError: "Google Workspace delivery failed; verify secure server-side authorization." }).where(eq(retentionReviewNotifications.notificationId, notification.notificationId));
+      failed += 1;
+    }
+  }
+  return { configured: true as const, pending: queued.length - delivered - failed, attempted: queued.length, delivered, failed, status };
+}
+
 export async function getRetentionReviewNotificationPreferences(userId: number) {
   const db = await readyDb();
   if (!db) throw new Error("The control-assurance datastore is unavailable.");
@@ -350,6 +385,14 @@ export async function createSavedAuditView(input: { ownerUserId: number; title: 
   const values = { viewId: `SAV-${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`, ownerUserId: input.ownerUserId, title: input.title.trim(), workspaceRole: input.workspaceRole ?? null, assignedBy: input.assignedBy?.trim() || null, createdAt: now, lastUsedAt: null };
   await db.insert(grcSavedAuditViews).values(values);
   return values;
+}
+
+export async function renameSavedAuditView(input: { ownerUserId: number; viewId: string; title: string }) {
+  const db = await readyDb();
+  if (!db) throw new Error("The control-assurance datastore is unavailable.");
+  const title = input.title.trim();
+  await db.update(grcSavedAuditViews).set({ title }).where(and(eq(grcSavedAuditViews.viewId, input.viewId), eq(grcSavedAuditViews.ownerUserId, input.ownerUserId)));
+  return { success: true as const, viewId: input.viewId, title };
 }
 
 export async function markSavedAuditViewUsed(input: { ownerUserId: number; viewId: string }) {

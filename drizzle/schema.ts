@@ -335,6 +335,9 @@ export const retentionReviewNotifications = mysqlTable("retention_review_notific
   overdueAttachmentCount: int("overdueAttachmentCount").notNull(),
   createdAt: timestamp("createdAt").notNull(),
   readAt: timestamp("readAt"),
+  deliveryAttemptedAt: timestamp("deliveryAttemptedAt"),
+  deliveredAt: timestamp("deliveredAt"),
+  deliveryError: varchar("deliveryError", { length: 160 }),
 }, (table) => [
   uniqueIndex("retention_review_notification_identifier_unique").on(table.notificationId),
   uniqueIndex("retention_review_notification_delivery_unique").on(table.runId, table.recipientUserId, table.channel),

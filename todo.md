@@ -129,3 +129,8 @@
 - [x] Add a protected Google OAuth configuration panel that records activation status without ever returning client secret or refresh token values to the browser.
 - [x] Test preference storage, saved audit views, OAuth status redaction, responsive presentation, and save a checkpoint.
 - [x] Keep Google OAuth credential entry and activation explicitly deferred until the user later supplies administrator-approved server-only values; retain an OAuth-pending status in the current release.
+- [x] Add private saved-audit-view rename controls and per-administrator sorting options.
+- [x] Implement a server-side Google Workspace email delivery adapter that drains only opted-in queued retention-review reminders without exposing evidence metadata beyond approved reminder counts.
+- [x] Add a secure administrator activation section that guides credential entry through server-side project configuration and never renders OAuth secrets in the browser.
+- [x] Extend the Google Workspace OAuth scope, migration, delivery status, and authorization tests; verify responsive settings UX and save a checkpoint.
+- [x] Keep Google Workspace OAuth credentials and live Gmail reminder sending deferred until the user supplies approved server-only values; retain an explicit OAuth-pending delivery state.

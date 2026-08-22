@@ -19,8 +19,11 @@ const operations = vi.hoisted(() => ({
   markRetentionReviewNotificationRead: vi.fn(),
   getRetentionReviewNotificationPreferences: vi.fn(),
   saveRetentionReviewNotificationPreferences: vi.fn(),
+  getRetentionReviewEmailDeliveryStatus: vi.fn(),
+  processQueuedRetentionReviewEmails: vi.fn(),
   listSavedAuditViews: vi.fn(),
   createSavedAuditView: vi.fn(),
+  renameSavedAuditView: vi.fn(),
   markSavedAuditViewUsed: vi.fn(),
   deleteSavedAuditView: vi.fn(),
   getRoleAssignmentAuditPage: vi.fn(),
@@ -106,8 +109,11 @@ describe("controlAssuranceRouter", () => {
     await expect(restrictedCaller.administration()).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(restrictedCaller.retentionReviewNotificationPreferences()).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(restrictedCaller.saveRetentionReviewNotificationPreferences({ inAppEnabled: true, emailEnabled: false })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(restrictedCaller.retentionReviewEmailDeliveryStatus()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(restrictedCaller.processQueuedRetentionReviewEmails()).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(restrictedCaller.savedAuditViews()).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(restrictedCaller.createSavedAuditView({ title: "Restricted view" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(restrictedCaller.renameSavedAuditView({ viewId: "SAV-001", title: "Restricted rename" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(restrictedCaller.markSavedAuditViewUsed({ viewId: "SAV-001" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(restrictedCaller.deleteSavedAuditView({ viewId: "SAV-001" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
@@ -125,8 +131,11 @@ describe("controlAssuranceRouter", () => {
     operations.markRetentionReviewNotificationRead.mockResolvedValue({ success: true });
     operations.getRetentionReviewNotificationPreferences.mockResolvedValue({ userId: 1, inAppEnabled: true, emailEnabled: false });
     operations.saveRetentionReviewNotificationPreferences.mockResolvedValue({ userId: 1, inAppEnabled: true, emailEnabled: true });
+    operations.getRetentionReviewEmailDeliveryStatus.mockReturnValue({ configured: false, missingVariables: ["GOOGLE_WORKSPACE_REFRESH_TOKEN"] });
+    operations.processQueuedRetentionReviewEmails.mockResolvedValue({ configured: false, pending: 1, attempted: 0, delivered: 0, failed: 0 });
     operations.listSavedAuditViews.mockResolvedValue([{ viewId: "SAV-001", title: "Analyst updates" }]);
     operations.createSavedAuditView.mockResolvedValue({ viewId: "SAV-002", title: "Owner actions" });
+    operations.renameSavedAuditView.mockResolvedValue({ success: true, viewId: "SAV-001", title: "Renamed analyst updates" });
     operations.markSavedAuditViewUsed.mockResolvedValue({ success: true });
     operations.deleteSavedAuditView.mockResolvedValue({ success: true });
     operations.getRoleAssignmentAuditPage.mockResolvedValue({ items: [{ eventId: "RAE-001", workspaceRole: "grc_analyst", assignedBy: "Portfolio Owner" }], page: 1, pageSize: 12, total: 1 });
@@ -145,8 +154,11 @@ describe("controlAssuranceRouter", () => {
     await expect(caller.markRetentionReviewNotificationRead({ notificationId: "RRN-001" })).resolves.toEqual({ success: true });
     await expect(caller.retentionReviewNotificationPreferences()).resolves.toMatchObject({ inAppEnabled: true, emailEnabled: false });
     await expect(caller.saveRetentionReviewNotificationPreferences({ inAppEnabled: true, emailEnabled: true })).resolves.toMatchObject({ emailEnabled: true });
+    await expect(caller.retentionReviewEmailDeliveryStatus()).resolves.toMatchObject({ configured: false });
+    await expect(caller.processQueuedRetentionReviewEmails()).resolves.toMatchObject({ pending: 1, attempted: 0 });
     await expect(caller.savedAuditViews()).resolves.toEqual([{ viewId: "SAV-001", title: "Analyst updates" }]);
     await expect(caller.createSavedAuditView({ title: "Owner actions", workspaceRole: "control_owner", assignedBy: "Portfolio Owner" })).resolves.toMatchObject({ viewId: "SAV-002" });
+    await expect(caller.renameSavedAuditView({ viewId: "SAV-001", title: "Renamed analyst updates" })).resolves.toMatchObject({ success: true });
     await expect(caller.markSavedAuditViewUsed({ viewId: "SAV-001" })).resolves.toEqual({ success: true });
     await expect(caller.deleteSavedAuditView({ viewId: "SAV-001" })).resolves.toEqual({ success: true });
     await expect(caller.roleAssignmentAudit({ page: 1, pageSize: 12, workspaceRole: "grc_analyst", assignedBy: "Portfolio Owner" })).resolves.toMatchObject({ total: 1 });
@@ -161,7 +173,9 @@ describe("controlAssuranceRouter", () => {
     expect(operations.getRoleAssignmentAuditExport).toHaveBeenCalledWith({ workspaceRole: "grc_analyst", assignedBy: "Portfolio Owner" });
     expect(operations.markRetentionReviewNotificationRead).toHaveBeenCalledWith({ notificationId: "RRN-001", userId: 1 });
     expect(operations.saveRetentionReviewNotificationPreferences).toHaveBeenCalledWith({ userId: 1, inAppEnabled: true, emailEnabled: true });
+    expect(operations.processQueuedRetentionReviewEmails).toHaveBeenCalledWith();
     expect(operations.createSavedAuditView).toHaveBeenCalledWith({ ownerUserId: 1, title: "Owner actions", workspaceRole: "control_owner", assignedBy: "Portfolio Owner" });
+    expect(operations.renameSavedAuditView).toHaveBeenCalledWith({ ownerUserId: 1, viewId: "SAV-001", title: "Renamed analyst updates" });
     expect(operations.markSavedAuditViewUsed).toHaveBeenCalledWith({ ownerUserId: 1, viewId: "SAV-001" });
     expect(operations.deleteSavedAuditView).toHaveBeenCalledWith({ ownerUserId: 1, viewId: "SAV-001" });
   });
