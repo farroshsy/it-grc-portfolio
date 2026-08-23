@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const operations = vi.hoisted(() => ({ getTutorialProgress: vi.fn(), saveTutorialProgress: vi.fn() }));
+const operations = vi.hoisted(() => ({ getTutorialProgress: vi.fn(), saveTutorialProgress: vi.fn(), submitTutorialFeedback: vi.fn() }));
 vi.mock("../features/tutorial/progressDb", () => operations);
+vi.mock("../features/tutorial/feedbackDb", () => operations);
 
 import { tutorialRouter } from "./tutorial";
 
@@ -28,5 +29,16 @@ describe("tutorialRouter", () => {
     await expect(anonymous.progress()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
     const caller = tutorialRouter.createCaller(authenticatedContext);
     await expect(caller.saveProgress({ activeStep: 5, completed: false })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("records bounded feedback for the authenticated sender only", async () => {
+    operations.submitTutorialFeedback.mockResolvedValue({ feedbackId: "TFB-123" });
+    const caller = tutorialRouter.createCaller(authenticatedContext);
+
+    await expect(caller.submitFeedback({ category: "Suggestion", message: "Make the evidence handoff example more explicit.", contactEmail: "followup@example.test" })).resolves.toEqual({ feedbackId: "TFB-123" });
+    expect(operations.submitTutorialFeedback).toHaveBeenCalledWith({ userId: 17, category: "Suggestion", message: "Make the evidence handoff example more explicit.", contactEmail: "followup@example.test" });
+    await expect(caller.submitFeedback({ category: "Issue", message: "too short" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    const anonymous = tutorialRouter.createCaller({} as never);
+    await expect(anonymous.submitFeedback({ category: "Question", message: "How should role changes be reviewed?" })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
   });
 });

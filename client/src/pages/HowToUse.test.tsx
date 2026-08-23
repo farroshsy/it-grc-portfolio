@@ -3,9 +3,10 @@ import React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const hooks = vi.hoisted(() => ({ progress: vi.fn(), saveProgress: vi.fn(), refetch: vi.fn() }));
+const hooks = vi.hoisted(() => ({ progress: vi.fn(), saveProgress: vi.fn(), submitFeedback: vi.fn(), refetch: vi.fn() }));
 vi.mock("@/_core/hooks/useAuth", () => ({ useAuth: () => ({ isAuthenticated: true }) }));
-vi.mock("@/lib/trpc", () => ({ trpc: { tutorial: { progress: { useQuery: hooks.progress }, saveProgress: { useMutation: hooks.saveProgress } } } }));
+vi.mock("@/const", () => ({ startLogin: vi.fn() }));
+vi.mock("@/lib/trpc", () => ({ trpc: { tutorial: { progress: { useQuery: hooks.progress }, saveProgress: { useMutation: hooks.saveProgress }, submitFeedback: { useMutation: hooks.submitFeedback } } } }));
 import HowToUse from "./HowToUse";
 
 describe("HowToUse", () => {
@@ -14,6 +15,7 @@ describe("HowToUse", () => {
     window.history.replaceState({}, "", "/how-to-use");
     hooks.progress.mockReturnValue({ data: { activeStep: 0, completed: false }, isLoading: false, refetch: hooks.refetch });
     hooks.saveProgress.mockReturnValue({ mutate: vi.fn(), isPending: false });
+    hooks.submitFeedback.mockReturnValue({ mutate: vi.fn(), isPending: false, isError: false });
   });
 
   it("guides visitors through the Control Ledger operating flow and links each step to its surface", () => {
@@ -44,5 +46,18 @@ describe("HowToUse", () => {
     expect(screen.getByRole("heading", { name: "Turn results into an owned risk decision." })).toBeTruthy();
     const mutation = hooks.saveProgress.mock.results[hooks.saveProgress.mock.results.length - 1]?.value as { mutate: ReturnType<typeof vi.fn> };
     await vi.waitFor(() => expect(mutation.mutate).toHaveBeenCalledWith({ activeStep: 3, completed: false }));
+  });
+
+  it("submits bounded authenticated feedback and acknowledges successful capture", async () => {
+    render(<HowToUse />);
+    fireEvent.change(screen.getByLabelText("Feedback type"), { target: { value: "Issue" } });
+    fireEvent.change(screen.getByLabelText("Your feedback"), { target: { value: "The progress label should explain why a step was saved." } });
+    fireEvent.change(screen.getByLabelText("Optional contact email"), { target: { value: "followup@example.test" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send feedback" }));
+    const mutation = hooks.submitFeedback.mock.results[hooks.submitFeedback.mock.results.length - 1]?.value as { mutate: ReturnType<typeof vi.fn> };
+    expect(mutation.mutate).toHaveBeenCalledWith({ category: "Issue", message: "The progress label should explain why a step was saved.", contactEmail: "followup@example.test" });
+    const options = hooks.submitFeedback.mock.calls[hooks.submitFeedback.mock.calls.length - 1]?.[0] as { onSuccess: () => void };
+    options.onSuccess();
+    await vi.waitFor(() => expect(screen.getByText(/feedback has been recorded/i)).toBeTruthy());
   });
 });

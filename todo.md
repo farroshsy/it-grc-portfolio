@@ -149,3 +149,7 @@
 - [x] Prioritize upgrade candidates with benefits, trade-offs, risk, and sequencing; retain sound existing boundaries and defer disproportionate changes.
 - [x] Implement and test the highest-value operational and architecture improvements selected by the reassessment.
 - [x] Revalidate production build, critical user paths, and regression suite; save a checkpoint with the principal-review outcome.
+- [x] Add a persisted administrator-only dark-mode appearance preference that does not alter public portfolio presentation.
+- [x] Upgrade the first-time administrator checklist with interactive completion state, progress display, and accessible reduced-motion-safe completion feedback.
+- [x] Add a tutorial feedback form with safe category, message, and optional contact capture plus clear success and error acknowledgement.
+- [x] Add schema migration, authorization and interaction tests, responsive validation, and save a checkpoint for the experience-improvement release.

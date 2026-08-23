@@ -46,9 +46,14 @@ const access = vi.hoisted(() => ({
   canPerformWorkspaceAction: vi.fn(),
   getWorkspaceRoles: vi.fn(),
 }));
+const experience = vi.hoisted(() => ({
+  getAdminExperiencePreferences: vi.fn(),
+  saveAdminExperiencePreferences: vi.fn(),
+}));
 
 vi.mock("../controlAssuranceDb", () => operations);
 vi.mock("../grcAccess", () => access);
+vi.mock("../features/experience/preferencesDb", () => experience);
 
 import { controlAssuranceRouter } from "./controlAssurance";
 
@@ -111,6 +116,8 @@ describe("controlAssuranceRouter", () => {
     await expect(restrictedCaller.saveRetentionReviewNotificationPreferences({ inAppEnabled: true, emailEnabled: false })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(restrictedCaller.retentionReviewEmailDeliveryStatus()).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(restrictedCaller.processQueuedRetentionReviewEmails()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(restrictedCaller.adminExperiencePreferences()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(restrictedCaller.saveAdminExperiencePreferences({ adminDarkMode: true, onboardingSteps: ["duties"] })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(restrictedCaller.savedAuditViews()).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(restrictedCaller.createSavedAuditView({ title: "Restricted view" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(restrictedCaller.renameSavedAuditView({ viewId: "SAV-001", title: "Restricted rename" })).rejects.toMatchObject({ code: "FORBIDDEN" });
@@ -132,6 +139,8 @@ describe("controlAssuranceRouter", () => {
     operations.getRetentionReviewNotificationPreferences.mockResolvedValue({ userId: 1, inAppEnabled: true, emailEnabled: false });
     operations.saveRetentionReviewNotificationPreferences.mockResolvedValue({ userId: 1, inAppEnabled: true, emailEnabled: true });
     operations.getRetentionReviewEmailDeliveryStatus.mockReturnValue({ configured: false, missingVariables: ["GOOGLE_WORKSPACE_REFRESH_TOKEN"] });
+    experience.getAdminExperiencePreferences.mockResolvedValue({ userId: 1, adminDarkMode: false, onboardingSteps: [], updatedAt: null });
+    experience.saveAdminExperiencePreferences.mockResolvedValue({ userId: 1, adminDarkMode: true, onboardingSteps: ["duties"], updatedAt: new Date() });
     operations.processQueuedRetentionReviewEmails.mockResolvedValue({ configured: false, pending: 1, attempted: 0, delivered: 0, failed: 0 });
     operations.listSavedAuditViews.mockResolvedValue([{ viewId: "SAV-001", title: "Analyst updates" }]);
     operations.createSavedAuditView.mockResolvedValue({ viewId: "SAV-002", title: "Owner actions" });
@@ -155,6 +164,8 @@ describe("controlAssuranceRouter", () => {
     await expect(caller.retentionReviewNotificationPreferences()).resolves.toMatchObject({ inAppEnabled: true, emailEnabled: false });
     await expect(caller.saveRetentionReviewNotificationPreferences({ inAppEnabled: true, emailEnabled: true })).resolves.toMatchObject({ emailEnabled: true });
     await expect(caller.retentionReviewEmailDeliveryStatus()).resolves.toMatchObject({ configured: false });
+    await expect(caller.adminExperiencePreferences()).resolves.toMatchObject({ adminDarkMode: false, onboardingSteps: [] });
+    await expect(caller.saveAdminExperiencePreferences({ adminDarkMode: true, onboardingSteps: ["duties"] })).resolves.toMatchObject({ adminDarkMode: true });
     await expect(caller.processQueuedRetentionReviewEmails()).resolves.toMatchObject({ pending: 1, attempted: 0 });
     await expect(caller.savedAuditViews()).resolves.toEqual([{ viewId: "SAV-001", title: "Analyst updates" }]);
     await expect(caller.createSavedAuditView({ title: "Owner actions", workspaceRole: "control_owner", assignedBy: "Portfolio Owner" })).resolves.toMatchObject({ viewId: "SAV-002" });
@@ -173,6 +184,8 @@ describe("controlAssuranceRouter", () => {
     expect(operations.getRoleAssignmentAuditExport).toHaveBeenCalledWith({ workspaceRole: "grc_analyst", assignedBy: "Portfolio Owner" });
     expect(operations.markRetentionReviewNotificationRead).toHaveBeenCalledWith({ notificationId: "RRN-001", userId: 1 });
     expect(operations.saveRetentionReviewNotificationPreferences).toHaveBeenCalledWith({ userId: 1, inAppEnabled: true, emailEnabled: true });
+    expect(experience.getAdminExperiencePreferences).toHaveBeenCalledWith(1);
+    expect(experience.saveAdminExperiencePreferences).toHaveBeenCalledWith({ userId: 1, adminDarkMode: true, onboardingSteps: ["duties"] });
     expect(operations.processQueuedRetentionReviewEmails).toHaveBeenCalledWith();
     expect(operations.createSavedAuditView).toHaveBeenCalledWith({ ownerUserId: 1, title: "Owner actions", workspaceRole: "control_owner", assignedBy: "Portfolio Owner" });
     expect(operations.renameSavedAuditView).toHaveBeenCalledWith({ ownerUserId: 1, viewId: "SAV-001", title: "Renamed analyst updates" });

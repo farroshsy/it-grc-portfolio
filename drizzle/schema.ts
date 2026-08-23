@@ -16,6 +16,7 @@ export const grcWorkspaceRoleValues = ["control_owner", "grc_analyst", "risk_app
 export const technicalVerdictValues = ["PASS", "FAIL", "INCONCLUSIVE"] as const;
 export const evidenceRetentionStatusValues = ["Active", "Expired", "Legal hold"] as const;
 export const evidenceTypeValues = ["Access review", "Change record", "Incident record", "Vulnerability scan", "Technical trace", "General"] as const;
+export const tutorialFeedbackCategoryValues = ["Suggestion", "Issue", "Question"] as const;
 
 /** Core user table backing the preconfigured authentication flow. */
 export const users = mysqlTable("users", {
@@ -380,6 +381,31 @@ export const tutorialProgress = mysqlTable("tutorial_progress", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (table) => [
   uniqueIndex("tutorial_progress_user_unique").on(table.userId),
+]);
+
+/** Private user state for the administrator console; onboarding items are opaque keys, not evidence or audit records. */
+export const userExperiencePreferences = mysqlTable("user_experience_preferences", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  adminDarkMode: boolean("adminDarkMode").default(false).notNull(),
+  onboardingSteps: json("onboardingSteps").$type<string[]>().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  uniqueIndex("user_experience_preferences_user_unique").on(table.userId),
+]);
+
+/** Authenticated product feedback; separate from control evidence, audit workpapers, and administrative records. */
+export const tutorialFeedback = mysqlTable("tutorial_feedback", {
+  id: int("id").autoincrement().primaryKey(),
+  feedbackId: varchar("feedbackId", { length: 40 }).notNull(),
+  userId: int("userId").notNull(),
+  category: mysqlEnum("category", tutorialFeedbackCategoryValues).notNull(),
+  message: text("message").notNull(),
+  contactEmail: varchar("contactEmail", { length: 320 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("tutorial_feedback_identifier_unique").on(table.feedbackId),
+  index("tutorial_feedback_user_created_idx").on(table.userId, table.createdAt),
 ]);
 
 export const assuranceTests = mysqlTable("assurance_tests", {

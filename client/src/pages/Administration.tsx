@@ -5,11 +5,19 @@ import { SiteShell } from "@/components/PortfolioChrome";
 import { TutorialHelpLink } from "@/features/tutorial/TutorialHelpLink";
 import { trpc } from "@/lib/trpc";
 import { roleAssignmentAuditToCsv } from "@/lib/roleAssignmentAuditCsv";
-import { BellRing, BookmarkCheck, ClipboardList, Clock3, Download, Layers3, Search, ShieldCheck, SlidersHorizontal, UsersRound, Waypoints } from "lucide-react";
+import { BellRing, BookmarkCheck, CheckCircle2, ClipboardList, Clock3, Download, Layers3, MoonStar, Search, ShieldCheck, SlidersHorizontal, UsersRound, Waypoints } from "lucide-react";
 
 const roles = ["control_owner", "grc_analyst", "risk_approver"] as const;
 const evidenceTypes = ["Access review", "Change record", "Incident record", "Vulnerability scan", "Technical trace", "General"] as const;
 const roleLabel = (role: string) => role.replaceAll("_", " ");
+const onboardingItems = [
+  { id: "duties", title: "Confirm accountable duties", detail: "Search existing local users, then grant only the control-owner, GRC-analyst, or risk-approver responsibility needed for their operating task." },
+  { id: "retention", title: "Set retention defaults", detail: "Create evidence-type templates and review legal holds before applying lifecycle dates to managed attachments." },
+  { id: "audit", title: "Review the role ledger", detail: "Use the immutable audit history and a private saved view to confirm who changed access and why." },
+  { id: "notifications", title: "Choose reminder preferences", detail: "Keep in-app reminders enabled unless there is an accountable alternative. Email remains queued until server-side Google authorization is supplied." },
+  { id: "secrets", title: "Leave secrets outside the browser", detail: "Configure Google Directory and Gmail only through secure project settings; this page intentionally never accepts client secrets or refresh tokens." },
+] as const;
+type OnboardingStep = (typeof onboardingItems)[number]["id"];
 
 export default function Administration() {
   const { isAuthenticated } = useAuth();
@@ -25,13 +33,14 @@ export default function Administration() {
   const notificationInbox = trpc.controlAssurance.retentionReviewNotificationInbox.useQuery(undefined, { enabled: isAuthenticated && access.data?.isAdministrator === true });
   const notificationPreferences = trpc.controlAssurance.retentionReviewNotificationPreferences.useQuery(undefined, { enabled: isAuthenticated && access.data?.isAdministrator === true });
   const emailDeliveryStatus = trpc.controlAssurance.retentionReviewEmailDeliveryStatus.useQuery(undefined, { enabled: isAuthenticated && access.data?.isAdministrator === true });
+  const adminExperience = trpc.controlAssurance.adminExperiencePreferences.useQuery(undefined, { enabled: isAuthenticated && access.data?.isAdministrator === true });
   const savedAuditViews = trpc.controlAssurance.savedAuditViews.useQuery(undefined, { enabled: isAuthenticated && access.data?.isAdministrator === true });
   const [directoryQuery, setDirectoryQuery] = useState("");
   const [selectedDirectoryGroup, setSelectedDirectoryGroup] = useState("");
   const googleGroups = trpc.controlAssurance.googleWorkspaceGroups.useQuery({ query: directoryQuery || undefined }, { enabled: isAuthenticated && access.data?.isAdministrator === true });
   const googleMembers = trpc.controlAssurance.googleWorkspaceGroupMembers.useQuery({ groupKey: selectedDirectoryGroup || "not-configured" }, { enabled: isAuthenticated && access.data?.isAdministrator === true && Boolean(selectedDirectoryGroup) });
   const utils = trpc.useUtils();
-  const refresh = () => { void utils.controlAssurance.administration.invalidate(); void utils.controlAssurance.roleAssignmentAudit.invalidate(); void utils.controlAssurance.retentionReviewNotificationInbox.invalidate(); void utils.controlAssurance.retentionReviewNotificationPreferences.invalidate(); void utils.controlAssurance.retentionReviewEmailDeliveryStatus.invalidate(); void utils.controlAssurance.savedAuditViews.invalidate(); void utils.controlAssurance.myAccess.invalidate(); };
+  const refresh = () => { void utils.controlAssurance.administration.invalidate(); void utils.controlAssurance.roleAssignmentAudit.invalidate(); void utils.controlAssurance.retentionReviewNotificationInbox.invalidate(); void utils.controlAssurance.retentionReviewNotificationPreferences.invalidate(); void utils.controlAssurance.retentionReviewEmailDeliveryStatus.invalidate(); void utils.controlAssurance.adminExperiencePreferences.invalidate(); void utils.controlAssurance.savedAuditViews.invalidate(); void utils.controlAssurance.myAccess.invalidate(); };
   const assign = trpc.controlAssurance.assignWorkspaceRole.useMutation({ onSuccess: refresh });
   const bulkAssign = trpc.controlAssurance.bulkAssignWorkspaceRole.useMutation({ onSuccess: refresh });
   const retention = trpc.controlAssurance.setAttachmentRetention.useMutation({ onSuccess: refresh });
@@ -45,6 +54,7 @@ export default function Administration() {
   const renameSavedView = trpc.controlAssurance.renameSavedAuditView.useMutation({ onSuccess: () => { setRenamingSavedViewId(null); setRenamingSavedViewTitle(""); void utils.controlAssurance.savedAuditViews.invalidate(); } });
   const useSavedView = trpc.controlAssurance.markSavedAuditViewUsed.useMutation({ onSuccess: () => void utils.controlAssurance.savedAuditViews.invalidate() });
   const deleteSavedView = trpc.controlAssurance.deleteSavedAuditView.useMutation({ onSuccess: () => void utils.controlAssurance.savedAuditViews.invalidate() });
+  const saveAdminExperience = trpc.controlAssurance.saveAdminExperiencePreferences.useMutation({ onSuccess: () => void utils.controlAssurance.adminExperiencePreferences.invalidate(), onError: () => { setAppearanceDraft(null); setOnboardingDraft(null); } });
   const [query, setQuery] = useState("");
   const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
   const [bulkRole, setBulkRole] = useState<(typeof roles)[number]>("control_owner");
@@ -64,6 +74,8 @@ export default function Administration() {
   const [savedViewSort, setSavedViewSort] = useState<"title" | "newest" | "recently_used">("title");
   const [renamingSavedViewId, setRenamingSavedViewId] = useState<string | null>(null);
   const [renamingSavedViewTitle, setRenamingSavedViewTitle] = useState("");
+  const [appearanceDraft, setAppearanceDraft] = useState<boolean | null>(null);
+  const [onboardingDraft, setOnboardingDraft] = useState<OnboardingStep[] | null>(null);
   const availableUsers = admin.data?.users ?? [];
   const visibleUsers = useMemo(() => availableUsers.filter((user) => `${user.name ?? ""} ${user.email ?? ""} ${user.openId}`.toLowerCase().includes(query.toLowerCase())), [availableUsers, query]);
   const discoveredLocalUsers = useMemo(() => {
@@ -75,6 +87,9 @@ export default function Administration() {
     if (savedViewSort === "recently_used") return new Date(right.lastUsedAt ?? 0).getTime() - new Date(left.lastUsedAt ?? 0).getTime();
     return left.title.localeCompare(right.title);
   }), [savedAuditViews.data, savedViewSort]);
+  const adminDarkMode = appearanceDraft ?? adminExperience.data?.adminDarkMode ?? false;
+  const completedOnboardingSteps = onboardingDraft ?? (adminExperience.data?.onboardingSteps ?? []) as OnboardingStep[];
+  const onboardingProgress = Math.round((completedOnboardingSteps.length / onboardingItems.length) * 100);
 
   if (!isAuthenticated) return <SiteShell><main className="admin-page"><AccessState title="Administrator access required" detail="Sign in with an administrator account to manage workspace permissions and evidence retention." /></main></SiteShell>;
   if (access.isLoading) return <SiteShell><main className="admin-page"><p className="hub-state">Resolving administrator access…</p></main></SiteShell>;
@@ -106,10 +121,17 @@ export default function Administration() {
     const link = document.createElement("a"); link.href = url; link.download = `role-assignment-audit-${new Date().toISOString().slice(0, 10)}.csv`; link.click(); URL.revokeObjectURL(url);
   };
 
-  return <SiteShell><main className="admin-page">
-    <section className="admin-hero"><div><span className="eyebrow"><UsersRound size={13} /> Workspace administration</span><h1>Assign accountable GRC actions and retain only the evidence you need.</h1><p>Search and update workspace roles in bulk, retain a clear decision history, and apply repeatable evidence-type lifecycle templates. Platform administrators retain all workspace actions regardless of their explicit records.</p><TutorialHelpLink step={4} label="Need help with administrator setup?" /></div><aside><span>Control boundary</span><strong>Administrator-only</strong><p>Role events are append-only accountability records. Evidence expiry removes workflow access without deleting audit metadata.</p></aside></section>
+  const persistAdminExperience = (nextDarkMode: boolean, nextSteps: OnboardingStep[]) => saveAdminExperience.mutate({ adminDarkMode: nextDarkMode, onboardingSteps: nextSteps });
+  const toggleOnboardingStep = (step: OnboardingStep) => {
+    const nextSteps = completedOnboardingSteps.includes(step) ? completedOnboardingSteps.filter((item) => item !== step) : [...completedOnboardingSteps, step];
+    setOnboardingDraft(nextSteps);
+    persistAdminExperience(adminDarkMode, nextSteps);
+  };
 
-    <section className="admin-section admin-onboarding"><div className="section-heading compact"><div><span className="eyebrow"><Waypoints size={13} /> First-time administrator checklist</span><h2>Establish the operating guardrails in five minutes.</h2></div><p>Complete these checks before enabling routine evidence review. Each action is role-bound and every configuration change remains attributable.</p></div><ol><li><span>01</span><div><strong>Confirm accountable duties</strong><p>Search existing local users, then grant only the control-owner, GRC-analyst, or risk-approver responsibility needed for their operating task.</p></div></li><li><span>02</span><div><strong>Set retention defaults</strong><p>Create evidence-type templates and review legal holds before applying lifecycle dates to managed attachments.</p></div></li><li><span>03</span><div><strong>Review the role ledger</strong><p>Use the immutable audit history and a private saved view to confirm who changed access and why.</p></div></li><li><span>04</span><div><strong>Choose reminder preferences</strong><p>Keep in-app reminders enabled unless there is an accountable alternative. Email remains queued until server-side Google authorization is supplied.</p></div></li><li><span>05</span><div><strong>Leave secrets outside the browser</strong><p>Configure Google Directory and Gmail only through secure project settings; this page intentionally never accepts client secrets or refresh tokens.</p></div></li></ol></section>
+  return <SiteShell><main className={adminDarkMode ? "admin-page admin-deep-dark" : "admin-page"}>
+    <section className="admin-hero"><div><span className="eyebrow"><UsersRound size={13} /> Workspace administration</span><h1>Assign accountable GRC actions and retain only the evidence you need.</h1><p>Search and update workspace roles in bulk, retain a clear decision history, and apply repeatable evidence-type lifecycle templates. Platform administrators retain all workspace actions regardless of their explicit records.</p><TutorialHelpLink step={4} label="Need help with administrator setup?" /></div><aside><span>Control boundary</span><strong>Administrator-only</strong><p>Role events are append-only accountability records. Evidence expiry removes workflow access without deleting audit metadata.</p><label className="admin-appearance-toggle"><MoonStar size={14} /><span>Deep dark mode</span><input type="checkbox" role="switch" checked={adminDarkMode} disabled={adminExperience.isLoading || saveAdminExperience.isPending} onChange={(event) => { const nextDarkMode = event.target.checked; setAppearanceDraft(nextDarkMode); persistAdminExperience(nextDarkMode, completedOnboardingSteps); }} /><i aria-hidden="true" /></label></aside></section>
+
+    <section className="admin-section admin-onboarding"><div className="section-heading compact"><div><span className="eyebrow"><Waypoints size={13} /> First-time administrator checklist</span><h2>Establish the operating guardrails in five minutes.</h2></div><p>Complete these checks before enabling routine evidence review. Each action is role-bound and every configuration change remains attributable.</p></div><div className="onboarding-progress"><div><span>{completedOnboardingSteps.length} of {onboardingItems.length} guardrails complete</span><strong>{onboardingProgress}%</strong></div><div role="progressbar" aria-label="Administrator onboarding progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={onboardingProgress}><i style={{ width: `${onboardingProgress}%` }} /></div>{onboardingProgress === 100 && <p role="status"><CheckCircle2 size={14} /> Onboarding complete. Revisit any guardrail whenever the operating model changes.</p>}</div><ol>{onboardingItems.map((item, index) => { const completed = completedOnboardingSteps.includes(item.id); return <li key={item.id} className={completed ? "completed" : ""}><label><input type="checkbox" checked={completed} disabled={adminExperience.isLoading || saveAdminExperience.isPending} onChange={() => toggleOnboardingStep(item.id)} aria-label={`Mark ${item.title} complete`} /><span>{completed ? <CheckCircle2 size={15} /> : String(index + 1).padStart(2, "0")}</span></label><div><strong>{item.title}</strong><p>{item.detail}</p></div></li>; })}</ol></section>
 
     <section className="admin-section notification-section"><div className="section-heading compact"><div><span className="eyebrow"><BellRing size={13} /> Retention review inbox</span><h2>Review reminders stay visible to accountable administrators.</h2></div><p>Each scheduled review creates metadata-only in-app reminders. Email delivery remains queued until Google Workspace OAuth is configured.</p></div>{unreadNotifications.length ? <div className="notification-list">{unreadNotifications.slice(0, 4).map((notification) => <article key={notification.notificationId}><div><span>Scheduled review · {new Date(notification.createdAt).toLocaleString()}</span><strong>{notification.dueAttachmentCount} due · {notification.overdueAttachmentCount} expired</strong><p>No attachment names, content, or storage links are exposed in reminders.</p></div><button disabled={markNotificationRead.isPending} onClick={() => markNotificationRead.mutate({ notificationId: notification.notificationId })}>Mark read</button></article>)}</div> : <p className="hub-state">No unread retention-review reminders. The next review will create administrator inbox records when due evidence exists.</p>}<div className="notification-preferences"><div><span className="eyebrow"><SlidersHorizontal size={13} /> My delivery settings</span><p>Preferences apply only to your own administrator reminders. In-app is enabled by default; email remains securely queued until Google OAuth activation.</p></div><label><input type="checkbox" checked={inAppEnabled} onChange={(event) => setPreferenceDraft({ inAppEnabled: event.target.checked, emailEnabled })} /> In-app reminder</label><label><input type="checkbox" checked={emailEnabled} onChange={(event) => setPreferenceDraft({ inAppEnabled, emailEnabled: event.target.checked })} /> Email reminder <small>OAuth pending</small></label><button disabled={saveNotificationPreferences.isPending} onClick={() => saveNotificationPreferences.mutate({ inAppEnabled, emailEnabled })}>{saveNotificationPreferences.isPending ? "Saving…" : "Save notification settings"}</button></div></section>
 

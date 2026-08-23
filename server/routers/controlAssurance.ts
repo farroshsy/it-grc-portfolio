@@ -5,6 +5,7 @@ import { createHeartbeatJob, updateHeartbeatJob } from "../_core/heartbeat";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { canPerformWorkspaceAction, getWorkspaceRoles, type WorkspaceRole } from "../grcAccess";
 import { listGoogleWorkspaceGroupMembers, listGoogleWorkspaceGroups } from "../googleWorkspaceDirectory";
+import { getAdminExperiencePreferences, saveAdminExperiencePreferences } from "../features/experience/preferencesDb";
 
 async function assertWorkspaceRole(user: Parameters<typeof getWorkspaceRoles>[0], allowed: WorkspaceRole[]) {
   const roles = await getWorkspaceRoles(user);
@@ -50,6 +51,8 @@ export const controlAssuranceRouter = router({
   retentionReviewNotificationPreferences: adminProcedure.query(async ({ ctx }) => getRetentionReviewNotificationPreferences(ctx.user.id)),
   saveRetentionReviewNotificationPreferences: adminProcedure.input(z.object({ inAppEnabled: z.boolean(), emailEnabled: z.boolean() })).mutation(async ({ input, ctx }) => saveRetentionReviewNotificationPreferences({ ...input, userId: ctx.user.id })),
   retentionReviewEmailDeliveryStatus: adminProcedure.query(async () => getRetentionReviewEmailDeliveryStatus()),
+  adminExperiencePreferences: adminProcedure.query(async ({ ctx }) => getAdminExperiencePreferences(ctx.user.id)),
+  saveAdminExperiencePreferences: adminProcedure.input(z.object({ adminDarkMode: z.boolean(), onboardingSteps: z.array(z.enum(["duties", "retention", "audit", "notifications", "secrets"])).max(5) })).mutation(async ({ input, ctx }) => saveAdminExperiencePreferences({ ...input, userId: ctx.user.id })),
   processQueuedRetentionReviewEmails: adminProcedure.mutation(async () => processQueuedRetentionReviewEmails()),
   savedAuditViews: adminProcedure.query(async ({ ctx }) => listSavedAuditViews(ctx.user.id)),
   createSavedAuditView: adminProcedure.input(z.object({ title: z.string().min(3).max(100), workspaceRole: z.enum(["control_owner", "grc_analyst", "risk_approver"]).optional(), assignedBy: z.string().min(1).max(80).optional() })).mutation(async ({ input, ctx }) => createSavedAuditView({ ...input, ownerUserId: ctx.user.id })),
