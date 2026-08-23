@@ -43,9 +43,9 @@ export function SiteShell({ children }: { children: ReactNode }) {
             </Link>
           ))}
         </nav>
-        <a className="header-status" href="#portfolio-disclaimer">
-          Evidence-led portfolio <ArrowUpRight size={13} />
-        </a>
+        <Link className="header-status" href="/how-to-use">
+          How to use <BookOpen size={13} />
+        </Link>
       </header>
       {children}
       <footer className="site-footer" id="portfolio-disclaimer">

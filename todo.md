@@ -134,3 +134,6 @@
 - [x] Add a secure administrator activation section that guides credential entry through server-side project configuration and never renders OAuth secrets in the browser.
 - [x] Extend the Google Workspace OAuth scope, migration, delivery status, and authorization tests; verify responsive settings UX and save a checkpoint.
 - [x] Keep Google Workspace OAuth credentials and live Gmail reminder sending deferred until the user supplies approved server-only values; retain an explicit OAuth-pending delivery state.
+- [x] Add an in-product tutorial route explaining how to use the Control Ledger portfolio and workspace.
+- [x] Build an interactive, step-based guide for the operating workflow, workspace roles, evidence lifecycle, audit/remediation routines, and server-only Google activation boundary.
+- [x] Add a clear tutorial entry point from the existing site navigation and validate keyboard, desktop, and mobile behavior with automated tests.

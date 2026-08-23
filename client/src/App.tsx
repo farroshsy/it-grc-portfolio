@@ -13,6 +13,7 @@ import ControlAssuranceHub from "./pages/ControlAssuranceHub";
 import ComplianceDashboard from "./pages/ComplianceDashboard";
 import ExecutiveBriefing from "./pages/ExecutiveBriefing";
 import Home from "./pages/Home";
+import HowToUse from "./pages/HowToUse";
 import PolicyPack from "./pages/PolicyPack";
 import SkillsCertifications from "./pages/SkillsCertifications";
 import TechnicalVerification from "./pages/TechnicalVerification";
@@ -22,6 +23,7 @@ function Router() {
   return (
     <Switch>
       <Route path={"/"} component={Home} />
+      <Route path={"/how-to-use"} component={HowToUse} />
       <Route path={"/case-studies/:slug"} component={CaseStudy} />
       <Route path={"/dashboard"} component={Dashboard} />
       <Route path={"/audit-room"} component={AuditRoom} />

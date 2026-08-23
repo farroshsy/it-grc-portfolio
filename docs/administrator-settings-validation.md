@@ -14,3 +14,10 @@
 The administrator page initially exposed a conditional-hook error while access state transitioned from loading to authorized. The derived Google-directory match computation was moved before conditional returns, and a loading-transition regression test now protects the hook order.
 
 Google Workspace remains intentionally OAuth-pending because the administrator deferred credentials. The status panel does not accept or expose credentials. A server-side Gmail adapter is prepared for metadata-only queued reminder counts, but it remains inactive until secure configuration supplies an approved sender and OAuth refresh token with Gmail send permission.
+
+## In-product tutorial verification
+
+| Check | Result |
+|---|---|
+| Desktop tutorial | Confirmed the five-step navigator, progress indicator, operating guidance, destination action, and safeguard panel render with clear editorial hierarchy. |
+| Mobile tutorial | Confirmed step controls stack into readable rows and the active guidance, previous/next controls, and safeguard cards remain within the viewport without horizontal overflow. |
