@@ -77,7 +77,10 @@ The development server uses the existing OAuth and database configuration. Do no
 pnpm test        # full Vitest suite
 pnpm check       # TypeScript without emit
 pnpm build       # production client and server build
+pnpm verify      # test, type-check, and build in delivery order
 ```
+
+The repository’s [quality workflow](.github/workflows/quality.yml) runs a frozen pnpm install and `pnpm verify` on pull requests and pushes to `main`. Package overrides and the Wouter patch live in `pnpm-workspace.yaml`, which is the pnpm 10-compatible location for shared workspace configuration.
 
 ### Database changes
 

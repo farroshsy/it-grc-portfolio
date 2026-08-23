@@ -145,3 +145,7 @@
 - [x] Refactor the selected high-value boundary only where the maintainability benefit outweighs regression and migration risk.
 - [x] Create a root README covering product purpose, architecture, folder map, local setup, tests, data/security boundaries, and deferred integrations.
 - [x] Validate the architecture upgrade with automated tests and type checks, document the decision, and save a checkpoint.
+- [x] Conduct and document a principal-level assessment of architecture, domain boundaries, security posture, runtime resilience, delivery readiness, and maintainability.
+- [x] Prioritize upgrade candidates with benefits, trade-offs, risk, and sequencing; retain sound existing boundaries and defer disproportionate changes.
+- [x] Implement and test the highest-value operational and architecture improvements selected by the reassessment.
+- [x] Revalidate production build, critical user paths, and regression suite; save a checkpoint with the principal-review outcome.
