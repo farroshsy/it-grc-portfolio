@@ -153,3 +153,7 @@
 - [x] Upgrade the first-time administrator checklist with interactive completion state, progress display, and accessible reduced-motion-safe completion feedback.
 - [x] Add a tutorial feedback form with safe category, message, and optional contact capture plus clear success and error acknowledgement.
 - [x] Add schema migration, authorization and interaction tests, responsive validation, and save a checkpoint for the experience-improvement release.
+- [x] Add an in-product tutorial release-notes section that clearly distinguishes current capabilities from planned integrations.
+- [x] Add direct, accessible setup links to each administrator onboarding guardrail without bypassing role or secret boundaries.
+- [x] Build an administrator-only tutorial feedback dashboard with filtered review, safe status transitions, and no public exposure of feedback records.
+- [x] Add migration, authorization, interaction, and responsive coverage for release notes, onboarding deep links, and feedback management; save a checkpoint.

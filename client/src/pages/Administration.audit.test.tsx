@@ -3,11 +3,11 @@ import React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const hooks = vi.hoisted(() => ({ access: vi.fn(), administration: vi.fn(), retentionReview: vi.fn(), notificationInbox: vi.fn(), notificationPreferences: vi.fn(), emailDeliveryStatus: vi.fn(), adminExperience: vi.fn(), savedViews: vi.fn(), googleGroups: vi.fn(), googleMembers: vi.fn(), audit: vi.fn(), auditExport: vi.fn(), mutation: vi.fn(), savePreferencesMutation: vi.fn(), saveAdminExperienceMutation: vi.fn(), processQueuedEmailsMutation: vi.fn(), createSavedViewMutation: vi.fn(), renameSavedViewMutation: vi.fn(), useSavedViewMutation: vi.fn(), deleteSavedViewMutation: vi.fn(), refetch: vi.fn(), invalidate: vi.fn() }));
+const hooks = vi.hoisted(() => ({ access: vi.fn(), administration: vi.fn(), retentionReview: vi.fn(), notificationInbox: vi.fn(), notificationPreferences: vi.fn(), emailDeliveryStatus: vi.fn(), adminExperience: vi.fn(), tutorialFeedback: vi.fn(), savedViews: vi.fn(), googleGroups: vi.fn(), googleMembers: vi.fn(), audit: vi.fn(), auditExport: vi.fn(), mutation: vi.fn(), savePreferencesMutation: vi.fn(), saveAdminExperienceMutation: vi.fn(), updateFeedbackMutation: vi.fn(), processQueuedEmailsMutation: vi.fn(), createSavedViewMutation: vi.fn(), renameSavedViewMutation: vi.fn(), useSavedViewMutation: vi.fn(), deleteSavedViewMutation: vi.fn(), refetch: vi.fn(), invalidate: vi.fn() }));
 vi.mock("@/_core/hooks/useAuth", () => ({ useAuth: () => ({ isAuthenticated: true }) }));
 vi.mock("@/components/PortfolioChrome", () => ({ SiteShell: ({ children }: { children: React.ReactNode }) => <>{children}</> }));
 vi.mock("@/features/tutorial/TutorialHelpLink", () => ({ TutorialHelpLink: ({ label }: { label: string }) => <a href="/how-to-use?step=5">{label}</a> }));
-vi.mock("@/lib/trpc", () => ({ trpc: { useUtils: () => ({ controlAssurance: { administration: { invalidate: hooks.invalidate }, roleAssignmentAudit: { invalidate: hooks.invalidate }, retentionReviewNotificationInbox: { invalidate: hooks.invalidate }, retentionReviewNotificationPreferences: { invalidate: hooks.invalidate }, retentionReviewEmailDeliveryStatus: { invalidate: hooks.invalidate }, adminExperiencePreferences: { invalidate: hooks.invalidate }, savedAuditViews: { invalidate: hooks.invalidate }, myAccess: { invalidate: hooks.invalidate } } }), controlAssurance: { myAccess: { useQuery: hooks.access }, administration: { useQuery: hooks.administration }, retentionReviewDashboard: { useQuery: hooks.retentionReview }, retentionReviewNotificationInbox: { useQuery: hooks.notificationInbox }, retentionReviewNotificationPreferences: { useQuery: hooks.notificationPreferences }, retentionReviewEmailDeliveryStatus: { useQuery: hooks.emailDeliveryStatus }, adminExperiencePreferences: { useQuery: hooks.adminExperience }, savedAuditViews: { useQuery: hooks.savedViews }, googleWorkspaceGroups: { useQuery: hooks.googleGroups }, googleWorkspaceGroupMembers: { useQuery: hooks.googleMembers }, markRetentionReviewNotificationRead: { useMutation: hooks.mutation }, saveRetentionReviewNotificationPreferences: { useMutation: hooks.savePreferencesMutation }, saveAdminExperiencePreferences: { useMutation: hooks.saveAdminExperienceMutation }, processQueuedRetentionReviewEmails: { useMutation: hooks.processQueuedEmailsMutation }, createSavedAuditView: { useMutation: hooks.createSavedViewMutation }, renameSavedAuditView: { useMutation: hooks.renameSavedViewMutation }, markSavedAuditViewUsed: { useMutation: hooks.useSavedViewMutation }, deleteSavedAuditView: { useMutation: hooks.deleteSavedViewMutation }, roleAssignmentAudit: { useQuery: hooks.audit }, roleAssignmentAuditExport: { useQuery: hooks.auditExport }, assignWorkspaceRole: { useMutation: hooks.mutation }, bulkAssignWorkspaceRole: { useMutation: hooks.mutation }, setAttachmentRetention: { useMutation: hooks.mutation }, upsertRetentionTemplate: { useMutation: hooks.mutation }, applyRetentionTemplate: { useMutation: hooks.mutation }, configureRetentionReview: { useMutation: hooks.mutation } } } }));
+vi.mock("@/lib/trpc", () => ({ trpc: { useUtils: () => ({ controlAssurance: { administration: { invalidate: hooks.invalidate }, roleAssignmentAudit: { invalidate: hooks.invalidate }, retentionReviewNotificationInbox: { invalidate: hooks.invalidate }, retentionReviewNotificationPreferences: { invalidate: hooks.invalidate }, retentionReviewEmailDeliveryStatus: { invalidate: hooks.invalidate }, adminExperiencePreferences: { invalidate: hooks.invalidate }, tutorialFeedback: { invalidate: hooks.invalidate }, savedAuditViews: { invalidate: hooks.invalidate }, myAccess: { invalidate: hooks.invalidate } } }), controlAssurance: { myAccess: { useQuery: hooks.access }, administration: { useQuery: hooks.administration }, retentionReviewDashboard: { useQuery: hooks.retentionReview }, retentionReviewNotificationInbox: { useQuery: hooks.notificationInbox }, retentionReviewNotificationPreferences: { useQuery: hooks.notificationPreferences }, retentionReviewEmailDeliveryStatus: { useQuery: hooks.emailDeliveryStatus }, adminExperiencePreferences: { useQuery: hooks.adminExperience }, tutorialFeedback: { useQuery: hooks.tutorialFeedback }, savedAuditViews: { useQuery: hooks.savedViews }, googleWorkspaceGroups: { useQuery: hooks.googleGroups }, googleWorkspaceGroupMembers: { useQuery: hooks.googleMembers }, markRetentionReviewNotificationRead: { useMutation: hooks.mutation }, saveRetentionReviewNotificationPreferences: { useMutation: hooks.savePreferencesMutation }, saveAdminExperiencePreferences: { useMutation: hooks.saveAdminExperienceMutation }, updateTutorialFeedbackStatus: { useMutation: hooks.updateFeedbackMutation }, processQueuedRetentionReviewEmails: { useMutation: hooks.processQueuedEmailsMutation }, createSavedAuditView: { useMutation: hooks.createSavedViewMutation }, renameSavedAuditView: { useMutation: hooks.renameSavedViewMutation }, markSavedAuditViewUsed: { useMutation: hooks.useSavedViewMutation }, deleteSavedAuditView: { useMutation: hooks.deleteSavedViewMutation }, roleAssignmentAudit: { useQuery: hooks.audit }, roleAssignmentAuditExport: { useQuery: hooks.auditExport }, assignWorkspaceRole: { useMutation: hooks.mutation }, bulkAssignWorkspaceRole: { useMutation: hooks.mutation }, setAttachmentRetention: { useMutation: hooks.mutation }, upsertRetentionTemplate: { useMutation: hooks.mutation }, applyRetentionTemplate: { useMutation: hooks.mutation }, configureRetentionReview: { useMutation: hooks.mutation } } } }));
 
 import Administration from "./Administration";
 
@@ -21,6 +21,7 @@ describe("Administration audit review", () => {
     hooks.notificationPreferences.mockReturnValue({ data: { inAppEnabled: true, emailEnabled: false } });
     hooks.emailDeliveryStatus.mockReturnValue({ data: { configured: false, note: "Server-side Gmail delivery is inactive.", missingVariables: ["GOOGLE_WORKSPACE_CLIENT_ID"] } });
     hooks.adminExperience.mockReturnValue({ isLoading: false, data: { adminDarkMode: false, onboardingSteps: [] } });
+    hooks.tutorialFeedback.mockReturnValue({ isLoading: false, data: [] });
     hooks.savedViews.mockReturnValue({ data: [] });
     hooks.googleGroups.mockReturnValue({ data: { configured: false, groups: [], note: "OAuth pending" } });
     hooks.googleMembers.mockReturnValue({ data: { configured: false, members: [] } });
@@ -30,6 +31,7 @@ describe("Administration audit review", () => {
     hooks.mutation.mockReturnValue({ mutate: vi.fn(), isPending: false });
     hooks.savePreferencesMutation.mockReturnValue({ mutate: vi.fn(), isPending: false });
     hooks.saveAdminExperienceMutation.mockReturnValue({ mutate: vi.fn(), isPending: false });
+    hooks.updateFeedbackMutation.mockReturnValue({ mutate: vi.fn(), isPending: false });
     hooks.processQueuedEmailsMutation.mockReturnValue({ mutate: vi.fn(), isPending: false });
     hooks.createSavedViewMutation.mockReturnValue({ mutate: vi.fn(), isPending: false });
     hooks.renameSavedViewMutation.mockReturnValue({ mutate: vi.fn(), isPending: false });
@@ -88,6 +90,7 @@ describe("Administration audit review", () => {
     expect(screen.getByText("Confirm accountable duties")).toBeTruthy();
     expect(screen.getByText("Leave secrets outside the browser")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Need help with administrator setup?" }).getAttribute("href")).toBe("/how-to-use?step=5");
+    expect(screen.getAllByRole("link", { name: "Open setup" }).map((link) => link.getAttribute("href"))).toEqual(["#role-assignment", "#retention-templates", "#audit-history", "#notification-preferences", "#google-oauth-activation"]);
   });
 
   it("persists deep-dark mode and completion progress for the administrator checklist", () => {
@@ -133,5 +136,18 @@ describe("Administration audit review", () => {
     fireEvent.click(screen.getByRole("button", { name: "Process queued email reminders" }));
     const process = hooks.processQueuedEmailsMutation.mock.results[hooks.processQueuedEmailsMutation.mock.results.length - 1]?.value as { mutate: ReturnType<typeof vi.fn> };
     expect(process.mutate).toHaveBeenCalledWith();
+  });
+
+  it("filters private tutorial feedback and records an allowed administrator review outcome", () => {
+    hooks.tutorialFeedback.mockReturnValue({ isLoading: false, data: [{ feedbackId: "TFB-001", userId: 7, category: "Suggestion", message: "Clarify the control-owner handoff.", contactEmail: null, status: "New", reviewNote: null, reviewedBy: null, reviewedAt: null, createdAt: new Date("2026-08-23") }] });
+    render(<Administration />);
+    expect(screen.getByRole("heading", { name: /Turn product signals into an owned decision/i })).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Status"), { target: { value: "New" } });
+    expect(hooks.tutorialFeedback).toHaveBeenLastCalledWith({ status: "New" }, expect.anything());
+    fireEvent.change(screen.getByLabelText("Review state"), { target: { value: "Planned" } });
+    fireEvent.change(screen.getByLabelText("Administrator note"), { target: { value: "Added to the next onboarding review." } });
+    fireEvent.click(screen.getByRole("button", { name: "Save review" }));
+    const mutation = hooks.updateFeedbackMutation.mock.results[hooks.updateFeedbackMutation.mock.results.length - 1]?.value as { mutate: ReturnType<typeof vi.fn> };
+    expect(mutation.mutate).toHaveBeenCalledWith({ feedbackId: "TFB-001", status: "Planned", reviewNote: "Added to the next onboarding review." });
   });
 });

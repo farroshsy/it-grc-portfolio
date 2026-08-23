@@ -6,6 +6,7 @@ import { adminProcedure, protectedProcedure, publicProcedure, router } from "../
 import { canPerformWorkspaceAction, getWorkspaceRoles, type WorkspaceRole } from "../grcAccess";
 import { listGoogleWorkspaceGroupMembers, listGoogleWorkspaceGroups } from "../googleWorkspaceDirectory";
 import { getAdminExperiencePreferences, saveAdminExperiencePreferences } from "../features/experience/preferencesDb";
+import { listTutorialFeedback, updateTutorialFeedbackStatus } from "../features/tutorial/feedbackDb";
 
 async function assertWorkspaceRole(user: Parameters<typeof getWorkspaceRoles>[0], allowed: WorkspaceRole[]) {
   const roles = await getWorkspaceRoles(user);
@@ -53,6 +54,12 @@ export const controlAssuranceRouter = router({
   retentionReviewEmailDeliveryStatus: adminProcedure.query(async () => getRetentionReviewEmailDeliveryStatus()),
   adminExperiencePreferences: adminProcedure.query(async ({ ctx }) => getAdminExperiencePreferences(ctx.user.id)),
   saveAdminExperiencePreferences: adminProcedure.input(z.object({ adminDarkMode: z.boolean(), onboardingSteps: z.array(z.enum(["duties", "retention", "audit", "notifications", "secrets"])).max(5) })).mutation(async ({ input, ctx }) => saveAdminExperiencePreferences({ ...input, userId: ctx.user.id })),
+  tutorialFeedback: adminProcedure.input(z.object({ status: z.enum(["New", "Reviewed", "Planned", "Closed"]).optional(), category: z.enum(["Suggestion", "Issue", "Question"]).optional() })).query(async ({ input }) => listTutorialFeedback(input)),
+  updateTutorialFeedbackStatus: adminProcedure.input(z.object({ feedbackId: z.string().min(1).max(40), status: z.enum(["New", "Reviewed", "Planned", "Closed"]), reviewNote: z.string().trim().max(1000).optional() })).mutation(async ({ input, ctx }) => {
+    const result = await updateTutorialFeedbackStatus({ ...input, reviewedBy: ctx.user.name || "Workspace administrator" });
+    if (!result.updated) throw new TRPCError({ code: "BAD_REQUEST", message: result.reason });
+    return result;
+  }),
   processQueuedRetentionReviewEmails: adminProcedure.mutation(async () => processQueuedRetentionReviewEmails()),
   savedAuditViews: adminProcedure.query(async ({ ctx }) => listSavedAuditViews(ctx.user.id)),
   createSavedAuditView: adminProcedure.input(z.object({ title: z.string().min(3).max(100), workspaceRole: z.enum(["control_owner", "grc_analyst", "risk_approver"]).optional(), assignedBy: z.string().min(1).max(80).optional() })).mutation(async ({ input, ctx }) => createSavedAuditView({ ...input, ownerUserId: ctx.user.id })),

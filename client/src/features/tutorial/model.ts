@@ -60,6 +60,27 @@ export const tutorialSteps: readonly TutorialStep[] = [
   },
 ];
 
+export const tutorialReleaseNotes = [
+  {
+    version: "Latest",
+    area: "Experience",
+    title: "Guided administrator setup and product feedback",
+    summary: "Administrators can save a private deep-dark appearance preference, track five onboarding guardrails, and review authenticated tutorial feedback through an administrator-only queue.",
+  },
+  {
+    version: "Current",
+    area: "Operating workflow",
+    title: "Contextual help and resumable tutorial progress",
+    summary: "Workspace help links open the relevant guide step, and signed-in users resume from their own saved tutorial position across devices.",
+  },
+  {
+    version: "Pending authorization",
+    area: "Google Workspace",
+    title: "Directory discovery and queued email remain server-bound",
+    summary: "The product exposes readiness only. Google OAuth values are never accepted in the browser, and live delivery remains inactive until approved server-side authorization is supplied.",
+  },
+] as const;
+
 export function tutorialHrefForStep(step: number) {
   const safeStep = Math.min(Math.max(Math.trunc(step), 0), TUTORIAL_STEP_COUNT - 1);
   return `/how-to-use?step=${safeStep + 1}`;

@@ -17,6 +17,7 @@ export const technicalVerdictValues = ["PASS", "FAIL", "INCONCLUSIVE"] as const;
 export const evidenceRetentionStatusValues = ["Active", "Expired", "Legal hold"] as const;
 export const evidenceTypeValues = ["Access review", "Change record", "Incident record", "Vulnerability scan", "Technical trace", "General"] as const;
 export const tutorialFeedbackCategoryValues = ["Suggestion", "Issue", "Question"] as const;
+export const tutorialFeedbackStatusValues = ["New", "Reviewed", "Planned", "Closed"] as const;
 
 /** Core user table backing the preconfigured authentication flow. */
 export const users = mysqlTable("users", {
@@ -402,10 +403,15 @@ export const tutorialFeedback = mysqlTable("tutorial_feedback", {
   category: mysqlEnum("category", tutorialFeedbackCategoryValues).notNull(),
   message: text("message").notNull(),
   contactEmail: varchar("contactEmail", { length: 320 }),
+  status: mysqlEnum("status", tutorialFeedbackStatusValues).default("New").notNull(),
+  reviewNote: text("reviewNote"),
+  reviewedBy: varchar("reviewedBy", { length: 80 }),
+  reviewedAt: timestamp("reviewedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (table) => [
   uniqueIndex("tutorial_feedback_identifier_unique").on(table.feedbackId),
   index("tutorial_feedback_user_created_idx").on(table.userId, table.createdAt),
+  index("tutorial_feedback_status_created_idx").on(table.status, table.createdAt),
 ]);
 
 export const assuranceTests = mysqlTable("assurance_tests", {
