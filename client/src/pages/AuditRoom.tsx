@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { ClipboardCheck, FileCheck2, Filter, Search, ShieldCheck } from "lucide-react";
-import { SiteShell, ProvenanceBadge, TutorialHelpLink } from "@/components/PortfolioChrome";
+import { SiteShell, ProvenanceBadge } from "@/components/PortfolioChrome";
+import { TutorialHelpLink } from "@/features/tutorial/TutorialHelpLink";
 import { trpc } from "@/lib/trpc";
 import AuditWorkpaper from "@/components/AuditWorkpaper";
 

@@ -1,57 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Link, useSearch } from "wouter";
-import { ArrowLeft, ArrowRight, BookOpen, ClipboardCheck, Database, LayoutDashboard, Settings2, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
 import { SiteShell } from "@/components/PortfolioChrome";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-
-const tutorialSteps = [
-  {
-    kicker: "Start with the map",
-    title: "Choose the right surface for your task.",
-    summary: "Control Ledger has two complementary surfaces: the public portfolio explains the assurance approach, while the authenticated workspace is where evidence, testing, remediation, and decisions are operated.",
-    action: "Explore the portfolio",
-    href: "/",
-    icon: BookOpen,
-    checks: ["Use case studies to understand the control rationale.", "Open Governance view to read the executive decision context.", "Sign in before attempting workspace operations."],
-  },
-  {
-    kicker: "Control-owner path",
-    title: "Submit evidence against a named control.",
-    summary: "Control owners begin in the workspace. Record a concise evidence summary, attach the supporting file to managed storage, and keep the record tied to a specific control objective.",
-    action: "Open the workspace",
-    href: "/workspace",
-    icon: Database,
-    checks: ["Choose the relevant control before creating evidence.", "Attach the source file; file bytes remain in managed storage, not the operational database.", "Use a factual summary that lets an analyst understand what is being evidenced."],
-  },
-  {
-    kicker: "GRC analyst path",
-    title: "Test the evidence, then make the gap actionable.",
-    summary: "Analysts review submitted evidence, record a test conclusion, and turn an ineffective result into a traceable finding with a remediation path. The compliance dashboard shows the resulting operating picture.",
-    action: "Open compliance view",
-    href: "/compliance-dashboard",
-    icon: ClipboardCheck,
-    checks: ["Use a reproducible test step and conclusion.", "Create or follow the linked remediation when a control is ineffective.", "Use Trace verify only for technical traces that are safe to process; raw payloads are not retained."],
-  },
-  {
-    kicker: "Decision path",
-    title: "Turn results into an owned risk decision.",
-    summary: "Use the governance dashboard and executive briefing to convert evidence and finding status into priorities. Risk approvers can review the rationale, expiry, and residual-risk request without mistaking the portfolio for a legal or certification decision.",
-    action: "Open governance view",
-    href: "/dashboard",
-    icon: LayoutDashboard,
-    checks: ["Review open findings and pending acceptance decisions together.", "Set a clear expiration when an acceptance is justified.", "Keep framework mappings evidence-reference only; they are not certification claims."],
-  },
-  {
-    kicker: "Administrator path",
-    title: "Maintain accountable access and review cadence.",
-    summary: "Administrators assign workspace duties, inspect the immutable role ledger, manage evidence retention, and save private audit views. Retention reminders are metadata-only. Google directory and email delivery remain server-side and are currently OAuth-pending.",
-    action: "Open administration",
-    href: "/administration",
-    icon: Settings2,
-    checks: ["Assign only the duty needed for the task: control owner, GRC analyst, or risk approver.", "Use retention templates and review the expiry queue before links are revoked.", "Configure Google credentials only in secure project settings—never in the browser."],
-  },
-] as const;
+import { TUTORIAL_STEP_COUNT, tutorialSteps } from "@/features/tutorial/model";
 
 export default function HowToUse() {
   const { isAuthenticated } = useAuth();
@@ -62,27 +15,27 @@ export default function HowToUse() {
   const activeStep = tutorialSteps[activeIndex];
   const ActiveIcon = activeStep.icon;
   const queryStep = Number(new URLSearchParams(search).get("step"));
-  const deepLinkIndex = Number.isInteger(queryStep) && queryStep >= 1 && queryStep <= tutorialSteps.length ? queryStep - 1 : null;
+  const deepLinkIndex = Number.isInteger(queryStep) && queryStep >= 1 && queryStep <= TUTORIAL_STEP_COUNT ? queryStep - 1 : null;
   const selectStep = (index: number) => {
     setActiveIndex(index);
-    if (isAuthenticated) saveProgress.mutate({ activeStep: index, completed: index === tutorialSteps.length - 1 });
+    if (isAuthenticated) saveProgress.mutate({ activeStep: index, completed: index === TUTORIAL_STEP_COUNT - 1 });
   };
   useEffect(() => {
     if (deepLinkIndex !== null) {
       setActiveIndex(deepLinkIndex);
-      if (isAuthenticated && progress.data?.activeStep !== deepLinkIndex) saveProgress.mutate({ activeStep: deepLinkIndex, completed: deepLinkIndex === tutorialSteps.length - 1 });
+      if (isAuthenticated && progress.data?.activeStep !== deepLinkIndex) saveProgress.mutate({ activeStep: deepLinkIndex, completed: deepLinkIndex === TUTORIAL_STEP_COUNT - 1 });
       return;
     }
     if (isAuthenticated && progress.data) setActiveIndex(progress.data.activeStep);
   }, [deepLinkIndex, isAuthenticated, progress.data, saveProgress]);
   const previous = () => selectStep(Math.max(0, activeIndex - 1));
-  const next = () => selectStep(Math.min(tutorialSteps.length - 1, activeIndex + 1));
-  const progressNote = !isAuthenticated ? "Sign in to save your place across devices." : progress.isLoading ? "Preparing your private tutorial progress…" : progress.data?.completed ? "You completed this guide. Restart it whenever you need a refresher." : activeIndex > 0 ? `Resuming at step ${activeIndex + 1} of ${tutorialSteps.length}.` : "Your next tutorial step is saved privately to your account.";
+  const next = () => selectStep(Math.min(TUTORIAL_STEP_COUNT - 1, activeIndex + 1));
+  const progressNote = !isAuthenticated ? "Sign in to save your place across devices." : progress.isLoading ? "Preparing your private tutorial progress…" : progress.data?.completed ? "You completed this guide. Restart it whenever you need a refresher." : activeIndex > 0 ? `Resuming at step ${activeIndex + 1} of ${TUTORIAL_STEP_COUNT}.` : "Your next tutorial step is saved privately to your account.";
 
   return <SiteShell><main className="tutorial-page">
     <section className="tutorial-hero"><div><span className="eyebrow"><ShieldCheck size={13} /> Interactive product guide</span><h1>Learn the control loop before you operate it.</h1><p>Use this short walkthrough to understand where each GRC activity belongs, what each role can do, and which boundaries keep the evidence trail defensible.</p></div><aside><span>Estimated route</span><strong>{isAuthenticated && activeIndex > 0 ? "Resume tutorial" : "Five practical steps"}</strong><p>{progressNote}</p>{isAuthenticated && activeIndex > 0 && <button className="tutorial-restart" onClick={() => selectStep(0)}>Restart from step one</button>}</aside></section>
 
-    <section className="tutorial-navigator" aria-label="Tutorial steps"><div className="tutorial-step-list" role="tablist" aria-label="How to use Control Ledger">{tutorialSteps.map((step, index) => { const Icon = step.icon; const selected = index === activeIndex; return <button key={step.title} role="tab" aria-selected={selected} className={selected ? "active" : ""} onClick={() => selectStep(index)}><span>{String(index + 1).padStart(2, "0")}</span><Icon size={15} /><strong>{step.kicker}</strong></button>; })}</div><div className="tutorial-progress" aria-label={`Step ${activeIndex + 1} of ${tutorialSteps.length}`}><span>Step {activeIndex + 1} of {tutorialSteps.length}</span><i><b style={{ width: `${((activeIndex + 1) / tutorialSteps.length) * 100}%` }} /></i></div></section>
+    <section className="tutorial-navigator" aria-label="Tutorial steps"><div className="tutorial-step-list" role="tablist" aria-label="How to use Control Ledger">{tutorialSteps.map((step, index) => { const Icon = step.icon; const selected = index === activeIndex; return <button key={step.title} role="tab" aria-selected={selected} className={selected ? "active" : ""} onClick={() => selectStep(index)}><span>{String(index + 1).padStart(2, "0")}</span><Icon size={15} /><strong>{step.kicker}</strong></button>; })}</div><div className="tutorial-progress" aria-label={`Step ${activeIndex + 1} of ${TUTORIAL_STEP_COUNT}`}><span>Step {activeIndex + 1} of {TUTORIAL_STEP_COUNT}</span><i><b style={{ width: `${((activeIndex + 1) / TUTORIAL_STEP_COUNT) * 100}%` }} /></i></div></section>
 
     <section className="tutorial-stage" aria-live="polite"><aside><span className="tutorial-step-number">{String(activeIndex + 1).padStart(2, "0")}</span><ActiveIcon size={28} /><span>{activeStep.kicker}</span></aside><div><span className="eyebrow">What to do</span><h2>{activeStep.title}</h2><p>{activeStep.summary}</p><ol>{activeStep.checks.map((check, index) => <li key={check}><span>{index + 1}</span>{check}</li>)}</ol><div className="tutorial-actions"><Link href={activeStep.href} className="button-primary">{activeStep.action} <ArrowRight size={15} /></Link><div><button onClick={previous} disabled={activeIndex === 0}><ArrowLeft size={14} /> Previous</button><button onClick={next} disabled={activeIndex === tutorialSteps.length - 1}>Next <ArrowRight size={14} /></button></div></div></div></section>
 

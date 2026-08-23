@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "@/const";
-import { SiteShell, TutorialHelpLink } from "@/components/PortfolioChrome";
+import { SiteShell } from "@/components/PortfolioChrome";
+import { TutorialHelpLink } from "@/features/tutorial/TutorialHelpLink";
 import { trpc } from "@/lib/trpc";
 import { roleAssignmentAuditToCsv } from "@/lib/roleAssignmentAuditCsv";
 import { BellRing, BookmarkCheck, ClipboardList, Clock3, Download, Layers3, Search, ShieldCheck, SlidersHorizontal, UsersRound, Waypoints } from "lucide-react";

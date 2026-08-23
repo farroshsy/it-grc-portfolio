@@ -141,3 +141,7 @@
 - [x] Add contextual Need help? links on workspace, compliance, trace verification, and administration views that open their relevant tutorial step.
 - [x] Persist signed-in tutorial progress and provide resume controls without affecting unauthenticated visitors.
 - [x] Add migration, contract, interaction, and responsive tests for onboarding, tutorial step routing, and user-scoped progress; save a checkpoint.
+- [x] Inventory the current codebase and compare practical directory and architecture upgrades with advantages, disadvantages, migration cost, and an explicit decision.
+- [x] Refactor the selected high-value boundary only where the maintainability benefit outweighs regression and migration risk.
+- [x] Create a root README covering product purpose, architecture, folder map, local setup, tests, data/security boundaries, and deferred integrations.
+- [x] Validate the architecture upgrade with automated tests and type checks, document the decision, and save a checkpoint.

@@ -1,7 +1,8 @@
 import { AlertTriangle, CheckCircle2, CircleDotDashed, Gauge, RefreshCw, ShieldAlert } from "lucide-react";
 import { useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from "recharts";
-import { SiteShell, TutorialHelpLink } from "@/components/PortfolioChrome";
+import { SiteShell } from "@/components/PortfolioChrome";
+import { TutorialHelpLink } from "@/features/tutorial/TutorialHelpLink";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { calculateGovernanceMetrics, isActionOverdue, residualRiskTone, summarizeResidualRiskByCategory } from "../../../shared/grcPresentation";

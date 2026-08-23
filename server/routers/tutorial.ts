@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
-import { getTutorialProgress, saveTutorialProgress } from "../tutorialProgressDb";
+import { getTutorialProgress, saveTutorialProgress } from "../features/tutorial/progressDb";
 
 export const tutorialRouter = router({
   progress: protectedProcedure.query(async ({ ctx }) => getTutorialProgress(ctx.user.id)),

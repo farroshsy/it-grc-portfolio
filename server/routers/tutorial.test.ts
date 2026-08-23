@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const operations = vi.hoisted(() => ({ getTutorialProgress: vi.fn(), saveTutorialProgress: vi.fn() }));
-vi.mock("../tutorialProgressDb", () => operations);
+vi.mock("../features/tutorial/progressDb", () => operations);
 
 import { tutorialRouter } from "./tutorial";
 

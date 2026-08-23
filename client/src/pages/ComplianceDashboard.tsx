@@ -1,6 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "@/const";
-import { ProvenanceBadge, SiteShell, TutorialHelpLink } from "@/components/PortfolioChrome";
+import { ProvenanceBadge, SiteShell } from "@/components/PortfolioChrome";
+import { TutorialHelpLink } from "@/features/tutorial/TutorialHelpLink";
 import { trpc } from "@/lib/trpc";
 import { AlertTriangle, BarChart3, CheckCircle2, Clock3, ShieldCheck } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";

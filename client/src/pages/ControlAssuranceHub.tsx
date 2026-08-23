@@ -3,7 +3,8 @@ import { AlertTriangle, ArrowRight, CheckCircle2, ClipboardCheck, Database, Down
 import { Link } from "wouter";
 import { startLogin } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { ProvenanceBadge, SiteShell, TutorialHelpLink } from "@/components/PortfolioChrome";
+import { ProvenanceBadge, SiteShell } from "@/components/PortfolioChrome";
+import { TutorialHelpLink } from "@/features/tutorial/TutorialHelpLink";
 import { trpc } from "@/lib/trpc";
 
 type HubControl = { controlId: string; systemId: string; title: string; objective: string; owner: string; frequency: string; framework: string; status: string };

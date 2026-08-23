@@ -1,6 +1,7 @@
 import React from "react";
 import { AlertTriangle, ArrowRight, BarChart3, ClipboardList, ShieldAlert } from "lucide-react";
-import { SiteShell, ProvenanceBadge, TutorialHelpLink } from "@/components/PortfolioChrome";
+import { SiteShell, ProvenanceBadge } from "@/components/PortfolioChrome";
+import { TutorialHelpLink } from "@/features/tutorial/TutorialHelpLink";
 import { trpc } from "@/lib/trpc";
 import { createExecutiveBriefing, type BriefingAction, type BriefingAuditRequest, type BriefingControl, type BriefingRisk, type BriefingTest } from "@shared/executiveBriefing";
 import ExecutiveBriefingPdfButton from "@/components/ExecutiveBriefingPdfButton";

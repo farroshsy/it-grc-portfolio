@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
-import { tutorialProgress } from "../drizzle/schema";
-import { getDb } from "./db";
+import { tutorialProgress } from "../../../drizzle/schema";
+import { getDb } from "../../db";
 
 export async function getTutorialProgress(userId: number) {
   const db = await getDb();

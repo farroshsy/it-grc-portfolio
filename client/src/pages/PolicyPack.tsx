@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { BookMarked, CheckCircle2, FileText, RotateCcw } from "lucide-react";
-import { SiteShell, ProvenanceBadge, TutorialHelpLink } from "@/components/PortfolioChrome";
+import { SiteShell, ProvenanceBadge } from "@/components/PortfolioChrome";
+import { TutorialHelpLink } from "@/features/tutorial/TutorialHelpLink";
 import { trpc } from "@/lib/trpc";
 
 type Policy = { id: number; policyId: string; title: string; domain: string; owner: string; version: string; reviewCycle: string; status: string; purpose: string; operatingRules: string[]; evidenceExamples: string[]; provenance: "Academic" | "Independent Research" | "Simulated Case Study" };

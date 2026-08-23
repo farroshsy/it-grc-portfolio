@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { ProvenanceBadge, SiteShell, TutorialHelpLink } from "@/components/PortfolioChrome";
+import { ProvenanceBadge, SiteShell } from "@/components/PortfolioChrome";
+import { TutorialHelpLink } from "@/features/tutorial/TutorialHelpLink";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "@/const";
 import { trpc } from "@/lib/trpc";

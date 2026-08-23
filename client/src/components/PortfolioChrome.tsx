@@ -1,6 +1,6 @@
 import React, { type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
-import { Activity, Award, BookOpen, CircleHelp, ClipboardCheck, Database, FileText, LayoutDashboard, Presentation, Settings2, ShieldCheck } from "lucide-react";
+import { Activity, Award, BookOpen, ClipboardCheck, Database, FileText, LayoutDashboard, Presentation, Settings2, ShieldCheck } from "lucide-react";
 
 export function ProvenanceBadge({ label }: { label: "Academic" | "Independent Research" | "Simulated Case Study" }) {
   return <span className="provenance-badge">{label}</span>;
@@ -12,10 +12,6 @@ export function FrameworkTags({ frameworks }: { frameworks: string[] }) {
       {frameworks.map((framework) => <span key={framework} className="framework-tag">{framework}</span>)}
     </div>
   );
-}
-
-export function TutorialHelpLink({ step, label = "Need help?" }: { step: number; label?: string }) {
-  return <Link href={`/how-to-use?step=${step + 1}`} className="tutorial-help-link"><CircleHelp size={13} /> {label}</Link>;
 }
 
 export function SiteShell({ children }: { children: ReactNode }) {
