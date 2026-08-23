@@ -3,7 +3,7 @@ import { AlertTriangle, ArrowRight, CheckCircle2, ClipboardCheck, Database, Down
 import { Link } from "wouter";
 import { startLogin } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { ProvenanceBadge, SiteShell } from "@/components/PortfolioChrome";
+import { ProvenanceBadge, SiteShell, TutorialHelpLink } from "@/components/PortfolioChrome";
 import { trpc } from "@/lib/trpc";
 
 type HubControl = { controlId: string; systemId: string; title: string; objective: string; owner: string; frequency: string; framework: string; status: string };
@@ -87,7 +87,7 @@ export default function ControlAssuranceHub() {
   };
 
   return <SiteShell><main className="hub-page">
-    <section className="hub-hero"><div><span className="eyebrow"><Database size={13} /> Control Assurance Hub</span><h1>From proof to decision—without losing the engineering handoff.</h1><p>An offline-first GRC workspace that turns control evidence into test conclusions, findings, remediation actions, risk acceptance, and management-ready decisions.</p><ProvenanceBadge label="Simulated Case Study" /></div><aside><span>Operating scenario</span><strong>Fintech control assurance</strong><p>Every record is synthetic. The workflow is functional; no client data, live external issue, or certification claim is represented.</p><div className="workspace-roles"><b>Current workspace access</b><p>{isAuthenticated ? access.isLoading ? "Resolving workspace roles…" : workspaceRoles.length ? workspaceRoles.join(" · ").replaceAll("_", " ") : "No workspace action role assigned" : "Sign in to resolve workspace roles"}</p></div></aside></section>
+    <section className="hub-hero"><div><span className="eyebrow"><Database size={13} /> Control Assurance Hub</span><h1>From proof to decision—without losing the engineering handoff.</h1><p>An offline-first GRC workspace that turns control evidence into test conclusions, findings, remediation actions, risk acceptance, and management-ready decisions.</p><ProvenanceBadge label="Simulated Case Study" /><TutorialHelpLink step={1} label="Need help with evidence?" /></div><aside><span>Operating scenario</span><strong>Fintech control assurance</strong><p>Every record is synthetic. The workflow is functional; no client data, live external issue, or certification claim is represented.</p><div className="workspace-roles"><b>Current workspace access</b><p>{isAuthenticated ? access.isLoading ? "Resolving workspace roles…" : workspaceRoles.length ? workspaceRoles.join(" · ").replaceAll("_", " ") : "No workspace action role assigned" : "Sign in to resolve workspace roles"}</p></div></aside></section>
     <section className="hub-layout">
       <nav className="hub-nav" aria-label="Control Assurance Hub sections">{tabs.map(([id, label, Icon]) => <button key={id} onClick={() => setTab(id)} className={tab === id ? "hub-nav-item active" : "hub-nav-item"}><Icon size={15} /><span>{label}</span></button>)}</nav>
       <div className="hub-content">

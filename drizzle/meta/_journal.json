@@ -78,6 +78,13 @@
       "when": 1787410271369,
       "tag": "0010_smart_spitfire",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1787445305156,
+      "tag": "0011_modern_mister_fear",
+      "breakpoints": true
     }
   ]
 }

@@ -21,3 +21,5 @@ Google Workspace remains intentionally OAuth-pending because the administrator d
 |---|---|
 | Desktop tutorial | Confirmed the five-step navigator, progress indicator, operating guidance, destination action, and safeguard panel render with clear editorial hierarchy. |
 | Mobile tutorial | Confirmed step controls stack into readable rows and the active guidance, previous/next controls, and safeguard cards remain within the viewport without horizontal overflow. |
+| Desktop onboarding and resume | Confirmed the first-time administrator checklist appears directly after the administration hero, and a signed-in deep link resumes at the selected tutorial step with a restart action. |
+| Mobile onboarding and resume | Confirmed the checklist stacks into a readable sequence, contextual help remains within the layout, and the resumed tutorial step and controls remain tappable without horizontal overflow. |

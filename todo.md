@@ -137,3 +137,7 @@
 - [x] Add an in-product tutorial route explaining how to use the Control Ledger portfolio and workspace.
 - [x] Build an interactive, step-based guide for the operating workflow, workspace roles, evidence lifecycle, audit/remediation routines, and server-only Google activation boundary.
 - [x] Add a clear tutorial entry point from the existing site navigation and validate keyboard, desktop, and mobile behavior with automated tests.
+- [x] Add a concise first-time administrator onboarding checklist with role assignment, retention, audit review, and server-only Google activation guidance.
+- [x] Add contextual Need help? links on workspace, compliance, trace verification, and administration views that open their relevant tutorial step.
+- [x] Persist signed-in tutorial progress and provide resume controls without affecting unauthenticated visitors.
+- [x] Add migration, contract, interaction, and responsive tests for onboarding, tutorial step routing, and user-scoped progress; save a checkpoint.

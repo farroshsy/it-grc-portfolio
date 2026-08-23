@@ -371,6 +371,17 @@ export const grcSavedAuditViews = mysqlTable("grc_saved_audit_views", {
   index("grc_saved_audit_view_owner_idx").on(table.ownerUserId, table.createdAt),
 ]);
 
+/** Personal walkthrough progress; this stores only the active tutorial step and never workspace evidence or role data. */
+export const tutorialProgress = mysqlTable("tutorial_progress", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  activeStep: int("activeStep").default(0).notNull(),
+  completed: boolean("completed").default(false).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [
+  uniqueIndex("tutorial_progress_user_unique").on(table.userId),
+]);
+
 export const assuranceTests = mysqlTable("assurance_tests", {
   id: int("id").autoincrement().primaryKey(),
   assuranceTestId: varchar("assuranceTestId", { length: 40 }).notNull(),

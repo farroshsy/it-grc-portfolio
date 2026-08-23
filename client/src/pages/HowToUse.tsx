@@ -1,7 +1,9 @@
-import React, { useState } from "react";
-import { Link } from "wouter";
+import React, { useEffect, useState } from "react";
+import { Link, useSearch } from "wouter";
 import { ArrowLeft, ArrowRight, BookOpen, ClipboardCheck, Database, LayoutDashboard, Settings2, ShieldCheck } from "lucide-react";
 import { SiteShell } from "@/components/PortfolioChrome";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
 
 const tutorialSteps = [
   {
@@ -52,16 +54,35 @@ const tutorialSteps = [
 ] as const;
 
 export default function HowToUse() {
+  const { isAuthenticated } = useAuth();
+  const search = useSearch();
+  const progress = trpc.tutorial.progress.useQuery(undefined, { enabled: isAuthenticated });
+  const saveProgress = trpc.tutorial.saveProgress.useMutation({ onSuccess: () => void progress.refetch() });
   const [activeIndex, setActiveIndex] = useState(0);
   const activeStep = tutorialSteps[activeIndex];
   const ActiveIcon = activeStep.icon;
-  const previous = () => setActiveIndex((index) => Math.max(0, index - 1));
-  const next = () => setActiveIndex((index) => Math.min(tutorialSteps.length - 1, index + 1));
+  const queryStep = Number(new URLSearchParams(search).get("step"));
+  const deepLinkIndex = Number.isInteger(queryStep) && queryStep >= 1 && queryStep <= tutorialSteps.length ? queryStep - 1 : null;
+  const selectStep = (index: number) => {
+    setActiveIndex(index);
+    if (isAuthenticated) saveProgress.mutate({ activeStep: index, completed: index === tutorialSteps.length - 1 });
+  };
+  useEffect(() => {
+    if (deepLinkIndex !== null) {
+      setActiveIndex(deepLinkIndex);
+      if (isAuthenticated && progress.data?.activeStep !== deepLinkIndex) saveProgress.mutate({ activeStep: deepLinkIndex, completed: deepLinkIndex === tutorialSteps.length - 1 });
+      return;
+    }
+    if (isAuthenticated && progress.data) setActiveIndex(progress.data.activeStep);
+  }, [deepLinkIndex, isAuthenticated, progress.data, saveProgress]);
+  const previous = () => selectStep(Math.max(0, activeIndex - 1));
+  const next = () => selectStep(Math.min(tutorialSteps.length - 1, activeIndex + 1));
+  const progressNote = !isAuthenticated ? "Sign in to save your place across devices." : progress.isLoading ? "Preparing your private tutorial progress…" : progress.data?.completed ? "You completed this guide. Restart it whenever you need a refresher." : activeIndex > 0 ? `Resuming at step ${activeIndex + 1} of ${tutorialSteps.length}.` : "Your next tutorial step is saved privately to your account.";
 
   return <SiteShell><main className="tutorial-page">
-    <section className="tutorial-hero"><div><span className="eyebrow"><ShieldCheck size={13} /> Interactive product guide</span><h1>Learn the control loop before you operate it.</h1><p>Use this short walkthrough to understand where each GRC activity belongs, what each role can do, and which boundaries keep the evidence trail defensible.</p></div><aside><span>Estimated route</span><strong>Five practical steps</strong><p>Choose a step, follow the recommended page, then return here whenever you need the broader operating context.</p></aside></section>
+    <section className="tutorial-hero"><div><span className="eyebrow"><ShieldCheck size={13} /> Interactive product guide</span><h1>Learn the control loop before you operate it.</h1><p>Use this short walkthrough to understand where each GRC activity belongs, what each role can do, and which boundaries keep the evidence trail defensible.</p></div><aside><span>Estimated route</span><strong>{isAuthenticated && activeIndex > 0 ? "Resume tutorial" : "Five practical steps"}</strong><p>{progressNote}</p>{isAuthenticated && activeIndex > 0 && <button className="tutorial-restart" onClick={() => selectStep(0)}>Restart from step one</button>}</aside></section>
 
-    <section className="tutorial-navigator" aria-label="Tutorial steps"><div className="tutorial-step-list" role="tablist" aria-label="How to use Control Ledger">{tutorialSteps.map((step, index) => { const Icon = step.icon; const selected = index === activeIndex; return <button key={step.title} role="tab" aria-selected={selected} className={selected ? "active" : ""} onClick={() => setActiveIndex(index)}><span>{String(index + 1).padStart(2, "0")}</span><Icon size={15} /><strong>{step.kicker}</strong></button>; })}</div><div className="tutorial-progress" aria-label={`Step ${activeIndex + 1} of ${tutorialSteps.length}`}><span>Step {activeIndex + 1} of {tutorialSteps.length}</span><i><b style={{ width: `${((activeIndex + 1) / tutorialSteps.length) * 100}%` }} /></i></div></section>
+    <section className="tutorial-navigator" aria-label="Tutorial steps"><div className="tutorial-step-list" role="tablist" aria-label="How to use Control Ledger">{tutorialSteps.map((step, index) => { const Icon = step.icon; const selected = index === activeIndex; return <button key={step.title} role="tab" aria-selected={selected} className={selected ? "active" : ""} onClick={() => selectStep(index)}><span>{String(index + 1).padStart(2, "0")}</span><Icon size={15} /><strong>{step.kicker}</strong></button>; })}</div><div className="tutorial-progress" aria-label={`Step ${activeIndex + 1} of ${tutorialSteps.length}`}><span>Step {activeIndex + 1} of {tutorialSteps.length}</span><i><b style={{ width: `${((activeIndex + 1) / tutorialSteps.length) * 100}%` }} /></i></div></section>
 
     <section className="tutorial-stage" aria-live="polite"><aside><span className="tutorial-step-number">{String(activeIndex + 1).padStart(2, "0")}</span><ActiveIcon size={28} /><span>{activeStep.kicker}</span></aside><div><span className="eyebrow">What to do</span><h2>{activeStep.title}</h2><p>{activeStep.summary}</p><ol>{activeStep.checks.map((check, index) => <li key={check}><span>{index + 1}</span>{check}</li>)}</ol><div className="tutorial-actions"><Link href={activeStep.href} className="button-primary">{activeStep.action} <ArrowRight size={15} /></Link><div><button onClick={previous} disabled={activeIndex === 0}><ArrowLeft size={14} /> Previous</button><button onClick={next} disabled={activeIndex === tutorialSteps.length - 1}>Next <ArrowRight size={14} /></button></div></div></div></section>
 

@@ -1,7 +1,7 @@
 import { AlertTriangle, CheckCircle2, CircleDotDashed, Gauge, RefreshCw, ShieldAlert } from "lucide-react";
 import { useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from "recharts";
-import { SiteShell } from "@/components/PortfolioChrome";
+import { SiteShell, TutorialHelpLink } from "@/components/PortfolioChrome";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { calculateGovernanceMetrics, isActionOverdue, residualRiskTone, summarizeResidualRiskByCategory } from "../../../shared/grcPresentation";
@@ -68,7 +68,7 @@ export default function Dashboard() {
     <SiteShell>
       <main className="dashboard-page">
         <section className="dashboard-hero">
-          <div><span className="eyebrow"><Gauge size={13} /> Continuous governance</span><h1>Compliance posture, traced to evidence.</h1><p>This view is calculated from the portfolio’s database records through live tRPC queries. It models how a GRC team can move from periodic assessment toward an observable, continuously managed control environment.</p></div>
+          <div><span className="eyebrow"><Gauge size={13} /> Continuous governance</span><h1>Compliance posture, traced to evidence.</h1><p>This view is calculated from the portfolio’s database records through live tRPC queries. It models how a GRC team can move from periodic assessment toward an observable, continuously managed control environment.</p><TutorialHelpLink step={3} label="Need help with decisions?" /></div>
           <Button className="dashboard-refresh" variant="outline" onClick={() => refetch()} disabled={isFetching}><RefreshCw size={15} className={isFetching ? "animate-spin" : ""} /> Refresh data</Button>
         </section>
         <section className="metric-grid" aria-label="GRC posture summary">
